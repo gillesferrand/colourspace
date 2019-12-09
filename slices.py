@@ -122,7 +122,9 @@ def CH_planes(L=np.arange(0,101,1),C=[0,200],H=[0,360],res=1,stretch=False,showf
     for Li in L: CH = CH_plane(Li,C=C,H=H,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize)
 
 def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name="CHplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
-    """ Generates an RGB array that samples the CH plane for a given L """
+    """ Generates an RGB array that samples the CH plane for a given L
+        (if stretch=True, then C is expressed as a percentage of Cmax)
+    """
     nC = int((C[1]-C[0])*res+1)
     nH = int((H[1]-H[0])*res+1)
     H_range = np.linspace(H[0],H[1],nH)
@@ -135,11 +137,11 @@ def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name
         Cmax_sRGB = gamut.Cmax_for_LH(L,H_range[k],res=res_gamut,gamut='sRGB')
         Cmax_full = gamut.Cmax_for_LH(L,H_range[k],res=res_gamut,gamut='full')
         if stretch:
-            C_range = np.linspace(C[0],Cmax_sRGB,nC) # C up to max representable
+            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_sRGB,nC) # C up to max representable
             for j in range(len(C_range)):
                 display_triplet(L,C_range[j],H_range[k])
                 arr['crop'][j,k] = convert.clip3(convert.LCH2RGB(L,C_range[j],H_range[k]))
-            C_range = np.linspace(C[0],Cmax_full,nC) # C up to max possible
+            C_range = np.linspace(C[0]/100.*Cmax_full,C[1]/100.*Cmax_full,nC) # C up to max possible
             for j in range(len(C_range)):
                 display_triplet(L,C_range[j],H_range[k])
                 arr['clip'][j,k] = convert.clip3(convert.LCH2RGB(L,C_range[j],H_range[k]))
@@ -169,8 +171,7 @@ def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name
     if stretch: # C normalized to 100%
         name += "_stretch"
         ylabel = "C/Cmax"
-        extent = [H[0], H[1], C[0], 100]
-        yticks = [0, 50, 100]
+        yticks = [0, 50, 100] if C==[0,100] else None
     make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
     return arr
 
@@ -183,7 +184,9 @@ def LC_planes(H=np.arange(0,360,1),L=[0,100],C=[0,200],res=1,stretch=False,showf
     for Hk in H: LC = LC_plane(Hk,L=L,C=C,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize)
 
 def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name="LCplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
-    """ Generates an RGB array that samples the LC plane for a given H """
+    """ Generates an RGB array that samples the LC plane for a given H
+        (if stretch=True, then C is expressed as a percentage of Cmax)
+    """
     nL = int((L[1]-L[0])*res+1)
     nC = int((C[1]-C[0])*res+1)
     L_range = np.linspace(L[0],L[1],nL)
@@ -195,11 +198,11 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
         Cmax_sRGB = gamut.Cmax_for_LH(L_range[i],H,res=res_gamut,gamut='sRGB')
         Cmax_full = gamut.Cmax_for_LH(L_range[i],H,res=res_gamut,gamut='full')
         if stretch:
-            C_range = np.linspace(C[0],Cmax_sRGB,nC) # C up to max representable
+            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_sRGB,nC) # C up to max representable
             for j in range(len(C_range)):
                 display_triplet(L_range[i],C_range[j],H)
                 arr['crop'][i,j] = convert.clip3(convert.LCH2RGB(L_range[i],C_range[j],H))
-            C_range = np.linspace(C[0],Cmax_full,nC) # C up to max possible
+            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_full,nC) # C up to max possible
             for j in range(len(C_range)):
                 display_triplet(L_range[i],C_range[j],H)
                 arr['clip'][i,j] = convert.clip3(convert.LCH2RGB(L_range[i],C_range[j],H))
@@ -230,8 +233,7 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
     if stretch: # C normalized to 100%
         name += "_stretch"
         xlabel = "C/Cmax"
-        extent = [C[0], 100, L[0], L[1]]
-        xticks = [0, 50, 100]
+        xticks = [0, 50, 100] if C==[0,100] else None
     make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
     return arr
 
