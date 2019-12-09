@@ -189,6 +189,7 @@ def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None
         ax = fg.add_subplot(111)
         ax.set_xlabel(space[(dim+1)%3])
         ax.set_ylabel(space[(dim+2)%3])
+        ax.set_title("%s=%03i-%03i.png"%(space[dim],ranges[dim][0],ranges[dim][1]))
     else:
         ax = plt.gca()
     # plot

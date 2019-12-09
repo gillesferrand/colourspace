@@ -13,6 +13,8 @@ The pre-computed limits at resolutions of 1, 5, 10, 20 nm are included as Numpy 
 
 **maps** provides functions to generate colour maps for Matplotlib, and/or written as png images. Three kinds of palettes are implemented, which separate the different perceptual dimensions: equi-luminant (varying only in H, at the max C), diverging (varying only in C between two hues H1 and H2), and mono-hue (varying only in L, at the maximum C).
 
+The package comes with five notebooks, which demonstrate the use of the five scripts.
+
 ---
 This package is provided "as is", with no warranty of any kind.  
 The code can be freely used by whoever wants to explore modern colour theory.
