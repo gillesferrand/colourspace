@@ -39,7 +39,7 @@ def LH_plane(C,L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",mod
     Cmax = {}
     valid = {}
     for gmt in ['sRGB','full']:
-        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gmt=gmt)
         valid[gmt] = np.logical_and(C>=0, C<=Cmax[gmt])[:,:,np.newaxis]
     arr = {}
     for mode in ['crop','clip']:
@@ -74,7 +74,7 @@ def LH_plane_max(L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",k
     Cmax = {}
     # maximal possible chroma for each hue
     for gmt in ['sRGB','full']:
-        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gmt=gmt)
     arr['max']['crop'] = convert.clip3(convert.LCH2RGB(LL,Cmax['sRGB'],HH))
     arr['max']['clip'] = convert.clip3(convert.LCH2RGB(LL,Cmax['full'],HH))
     # maximal possible chroma for all hues
@@ -113,8 +113,8 @@ def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name
     CC_, HH = np.meshgrid(C_range,H_range,indexing='ij')
     Cmax = {}
     for gmt in ['sRGB','full']:
-        #Cmax[gmt] = gamut.Cmax_for_LH(L,HH,res=res_gamut,gamut=gmt)
-        Cmax[gmt] = gamut.Cmax_for_LH(L,H_range,res=res_gamut,gamut=gmt)
+        #Cmax[gmt] = gamut.Cmax_for_LH(L,HH,res=res_gamut,gmt=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(L,H_range,res=res_gamut,gmt=gmt)
         Cmax[gmt] = np.repeat(Cmax[gmt][np.newaxis,:],nC,axis=0)
     valid = {}
     arr = {}
@@ -170,8 +170,8 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
     LL, CC_ = np.meshgrid(L_range,C_range,indexing='ij')
     Cmax = {}
     for gmt in ['sRGB','full']:
-        #Cmax[gmt] = gamut.Cmax_for_LH(LL,H,res=res_gamut,gamut=gmt)
-        Cmax[gmt] = gamut.Cmax_for_LH(L_range,H,res=res_gamut,gamut=gmt)
+        #Cmax[gmt] = gamut.Cmax_for_LH(LL,H,res=res_gamut,gmt=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(L_range,H,res=res_gamut,gmt=gmt)
         Cmax[gmt] = np.repeat(Cmax[gmt][:,np.newaxis],nC,axis=1)
     valid = {}
     arr = {}

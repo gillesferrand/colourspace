@@ -46,21 +46,21 @@ def valid_LCH_sRGB(L,C,H):
 valid_LCH = {"full": valid_LCH_full, \
              "sRGB": valid_LCH_sRGB}
 
-def find_Cmax_forward(res, gamut, save=False, plot=True, version='mapping'):
+def find_Cmax_forward(res, gmt, save=False, plot=True, version='mapping'):
     """ Finds the maximum Cmax for each (L,H) pair with a precision of res points per unit of L,C,H """
     if res not in Cmax.keys(): Cmax[res] = {}
-    if gamut=='full' and not 'XYZ' in limits.triangulation['cmp'].keys():
+    if gmt=='full' and not 'XYZ' in limits.triangulation['cmp'].keys():
         limits.set_limits(l_step=10, l_min=360, l_max=780)
         limits.triangulate('XYZ')
     L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
     H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
-    Cmax[res][gamut] = np.zeros((len(L),len(H)),dtype=np.float32)
+    Cmax[res][gmt] = np.zeros((len(L),len(H)),dtype=np.float32)
     # version with loops
     if version == 'looping':
         for i in range(len(L)):
             for k in range(len(H)):
-                Cmax[res][gamut][i,k] = find_Cmax_for_LH(L=L[i], H=H[k], Cres=1./res, gamut=gamut)
-                sys.stdout.write("L = %.2f, H = %.2f, Cmax = %.2f"%(L[i],H[k],Cmax[res][gamut][i,k]))
+                Cmax[res][gmt][i,k] = find_Cmax_for_LH(L=L[i], H=H[k], Cres=1./res, gmt=gmt)
+                sys.stdout.write("L = %.2f, H = %.2f, Cmax = %.2f"%(L[i],H[k],Cmax[res][gmt][i,k]))
                 sys.stdout.write("\r")
                 sys.stdout.flush()
         sys.stdout.write("\n")
@@ -68,21 +68,21 @@ def find_Cmax_forward(res, gamut, save=False, plot=True, version='mapping'):
     # version with mapping
     if version == 'mapping':
         LL, HH = np.meshgrid(L,H,indexing='ij')
-        Cmax[res][gamut][:,:] = find_Cmax_for_LH(LL, HH, Cres=1./res, gamut=gamut)
+        Cmax[res][gmt][:,:] = find_Cmax_for_LH(LL, HH, Cres=1./res, gmt=gmt)
     if version == 'mapping3D':
         C = np.linspace(0, 200, int(200.*res)+1)
         LLL, CCC, HHH = np.meshgrid(L,C,H,indexing='ij')
-        valid = valid_LCH[gamut](LLL,CCC,HHH)
+        valid = valid_LCH[gmt](LLL,CCC,HHH)
         for i in range(len(L)):
             for k in range(len(H)):
                 j_valid = np.where(valid[i,:,k])[0]
-                Cmax[res][gamut][i,k] = C[j_valid[-1]] if len(j_valid)>0 else 0
-    if save: save_Cmax_npy(res=res, gamut=gamut)
-    if plot: plot_Cmax(res=res, gamut=gamut)
+                Cmax[res][gmt][i,k] = C[j_valid[-1]] if len(j_valid)>0 else 0
+    if save: save_Cmax_npy(res=res, gmt=gmt)
+    if plot: plot_Cmax(res=res, gmt=gmt)
 
-def find_Cmax_for_LH(L, H, Cres, gamut):
+def find_Cmax_for_LH(L, H, Cres, gmt):
     """Finds the maximum C for a given (L,H) at a given resolution in a given gamut"""
-    edge_detector = lambda L,H: find_edge_by_dichotomy(lambda c: valid_LCH[gamut](L,c,H), xmin=0, xmax=200, dx=Cres)
+    edge_detector = lambda L,H: find_edge_by_dichotomy(lambda c: valid_LCH[gmt](L,c,H), xmin=0, xmax=200, dx=Cres)
     Cmax = np.vectorize(edge_detector)(L,H)
     Cmax = np.where(L<=  0,     0,Cmax)
     Cmax = np.where(L>=100,     0,Cmax)
@@ -148,7 +148,7 @@ def get_edges_LCH_full(res):
 get_edges_LCH = {"full": get_edges_LCH_full, \
                  "sRGB": get_edges_LCH_sRGB}
 
-def find_Cmax_backward(res_native, res_LH, gamut, save=False, plot=True):
+def find_Cmax_backward(res_native, res_LH, gmt, save=False, plot=True):
     """ Finds the maximum Cmax(L,H) by discretizing the gamut boundary in its native space
         for sRGB gamut: res_native = number of points along R, G, B
         for full gamut: res_native = delta_Lambda in nm
@@ -156,7 +156,7 @@ def find_Cmax_backward(res_native, res_LH, gamut, save=False, plot=True):
     """
     if res_LH not in Cmax.keys(): Cmax[res_LH] = {}
     # get edges in LCH space
-    LCH_max = get_edges_LCH[gamut](res_native)
+    LCH_max = get_edges_LCH[gmt](res_native)
     # interpolate the implicit function C(L,H)
     L = LCH_max[:,0]
     C = LCH_max[:,1]
@@ -168,28 +168,28 @@ def find_Cmax_backward(res_native, res_LH, gamut, save=False, plot=True):
     C_grid[:, 0] = 0.5*(C_grid[:,1]+C_grid[:,-2])
     C_grid[:,-1] = 0.5*(C_grid[:,1]+C_grid[:,-2])
 
-    Cmax[res_LH][gamut] = np.zeros(C_grid.shape,dtype=np.float32)
-    Cmax[res_LH][gamut][:,:] = C_grid[:,:]
-    if save: save_Cmax_npy(res=res_LH, gamut=gamut)
-    if plot: plot_Cmax(res=res_LH, gamut=gamut)
+    Cmax[res_LH][gmt] = np.zeros(C_grid.shape,dtype=np.float32)
+    Cmax[res_LH][gmt][:,:] = C_grid[:,:]
+    if save: save_Cmax_npy(res=res_LH, gmt=gmt)
+    if plot: plot_Cmax(res=res_LH, gmt=gmt)
 
 #-------------------
 # display the gamut
 #-------------------
 
-def get_extremum(res, gamut):
+def get_extremum(res, gmt):
     """ Prints the LCH value of the colour of highest C """
-    C = Cmax[res][gamut].max()
-    iL,iH = np.unravel_index(Cmax[res][gamut].argmax(),Cmax[res][gamut].shape)
-    nL = len(Cmax[res][gamut][:,0])
+    C = Cmax[res][gmt].max()
+    iL,iH = np.unravel_index(Cmax[res][gmt].argmax(),Cmax[res][gmt].shape)
+    nL = len(Cmax[res][gmt][:,0])
     L = L_min + iL/(nL-1.) * (L_max-L_min)
-    nH = len(Cmax[res][gamut][0,:])
+    nH = len(Cmax[res][gmt][0,:])
     H = H_min + iH/(nH-1.) * (H_max-H_min)
     return np.array((L,C,H))
 
-def plot_Cmax(res, gamut, vmax=200, fig=1, figsize=None, dir=this_dir, fname="Cmax", axes=['on','off']):
+def plot_Cmax(res, gmt, vmax=200, fig=1, figsize=None, dir=this_dir, fname="Cmax", axes=['on','off']):
     """ Plots Cmax(H,L) """
-    plot2D(Cmax[res][gamut], name=gamut, vmax=vmax, fname='%s_res%i_%s'%(fname,res,gamut), fig=fig, figsize=figsize, dir=dir, axes=axes)
+    plot2D(Cmax[res][gmt], name=gmt, vmax=vmax, fname='%s_res%i_%s'%(fname,res,gmt), fig=fig, figsize=figsize, dir=dir, axes=axes)
 
 def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize=None, aspect="equal", name="", fname="Cmax", dir=this_dir, axes=['on','off']):
     """ Plots a surface represented explicitly by a 2D array XY or implicitly by a set of 3D points XYZ """
@@ -269,25 +269,25 @@ def plot3D((R,G,B), angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
 # save and load the gamut
 #-------------------------
 
-def save_Cmax_npy(res, gamut, dir=this_dir):
+def save_Cmax_npy(res, gmt, dir=this_dir):
     """ Saves a gamut as a numpy binary file """
     global Cmax
-    fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gamut)
+    fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gmt)
     print "saving gamut to %s"%fname
-    np.save(fname, Cmax[res][gamut])
+    np.save(fname, Cmax[res][gmt])
 
-def load_Cmax_npy(res, gamut, dir=this_dir):
+def load_Cmax_npy(res, gmt, dir=this_dir):
     """ Loads a gamut from a numpy binary file """
     global Cmax
-    fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gamut)
+    fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gmt)
     print "loading gamut from %s"%fname
     if res not in Cmax.keys(): Cmax[res] = {}
-    Cmax[res][gamut] = np.load(fname)
+    Cmax[res][gmt] = np.load(fname)
 
-def save_Cmax_txt(res, gamut, dir=this_dir):
+def save_Cmax_txt(res, gmt, dir=this_dir):
     """ Saves a gamut as a text file """
     global Cmax
-    fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gamut)
+    fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gmt)
     file = open(fname, 'w')
     print "saving gamut to %s"%fname
     L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
@@ -297,46 +297,46 @@ def save_Cmax_txt(res, gamut, dir=this_dir):
     formats = format+"\t"+format+"\t"+format+"\n"
     for i in range(len(L)):
         for k in range(len(H)):
-            file.write(formats%(L[i],H[k],Cmax[res][gamut][i,k]))
+            file.write(formats%(L[i],H[k],Cmax[res][gmt][i,k]))
     file.close()
 
-def load_Cmax_txt(res, gamut, dir=this_dir):
+def load_Cmax_txt(res, gmt, dir=this_dir):
     """ Loads a gamut from a text file (as written by save_Cmax_txt()) """
     global Cmax
     Cmax[res] = {}
-    fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gamut)
+    fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gmt)
     file = open(fname, 'r')
     print "loading gamut from %s"%fname
     L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
     H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
-    Cmax[res][gamut] = np.zeros((len(L),len(H)),dtype=np.float32)
+    Cmax[res][gmt] = np.zeros((len(L),len(H)),dtype=np.float32)
     for i in range(len(L)):
         for k in range(len(H)):
-            Cmax[res][gamut][i,k] = float(file.readline().strip("\n").split("\t")[-1])
+            Cmax[res][gmt][i,k] = float(file.readline().strip("\n").split("\t")[-1])
     file.close()
 
 #---------------
 # use the gamut
 #---------------
 
-def set_Cmax(res,gamut):
+def set_Cmax(res,gmt):
     """ Loads or computes a gamut as needed (only needed once) """
     global Cmax
-    if res in Cmax.keys() and gamut in Cmax[res].keys(): return
+    if res in Cmax.keys() and gmt in Cmax[res].keys(): return
     try:
-        load_Cmax_npy(res,gamut)
+        load_Cmax_npy(res,gmt)
     except:
-        print "couldn't load gamut '%s' at res=%f, computing it"%(gamut,res)
-        find_Cmax_forward(res, gamut)
+        print "couldn't load gamut '%s' at res=%f, computing it"%(gmt,res)
+        find_Cmax_forward(res, gmt)
 
-def Cmax_for_LH(L,H,res=1,gamut='full'):
+def Cmax_for_LH(L,H,res=1,gmt='full'):
     """ Returns the maximum C for a given pair (L,H)
         at a given resolution in a given gamut """
     global Cmax
-    set_Cmax(res,gamut) # the gamut array is cached
+    set_Cmax(res,gmt) # the gamut array is cached
     H = H%360
     L_valid = np.logical_and(L>=0, L<=100)
-    C = np.where(L_valid,interpolate_Cmax_for_LH(L,H,Cmax[res][gamut]),np.nan)
+    C = np.where(L_valid,interpolate_Cmax_for_LH(L,H,Cmax[res][gmt]),np.nan)
     return C
 
 def interpolate_Cmax_for_LH(L,H,Cmax):

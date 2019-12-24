@@ -30,8 +30,8 @@ CMAP = {}
 # wrappers for the gamut functions at the chosen resolution
 res_gamut = 10
 Cmax_for_LH = {}
-Cmax_for_LH['crop'] = lambda l,h: gamut.Cmax_for_LH(l,h,res=res_gamut,gamut="sRGB")
-Cmax_for_LH['clip'] = lambda l,h: gamut.Cmax_for_LH(l,h,res=res_gamut,gamut="full")
+Cmax_for_LH['crop'] = lambda l,h: gamut.Cmax_for_LH(l,h,res=res_gamut,gmt="sRGB")
+Cmax_for_LH['clip'] = lambda l,h: gamut.Cmax_for_LH(l,h,res=res_gamut,gmt="full")
 
 def hue(H):
     return H if 0 <= H <= 360 else H%360
