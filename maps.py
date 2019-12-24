@@ -38,8 +38,9 @@ def hue(H):
 
 # equilum
 
-def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, targets=['mpl','png'], png_dir=".", out=False):
     """ Draws a line at constant L in the LH plane, in the chosen H range, at the Cmax for this L
+        (if sym==True then Cmax is set for all hues, otherwise for each hue independently)
     """
     #print "drawing path at L = %3i for H = %3i – %3i with the Cmax for this L"%(L,H[0],H[1])
     if H[0] <= H[1]:
@@ -51,45 +52,35 @@ def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], targets=['
     Cmax = {}
     RGB = {}
     for mode in modes:
-        Cmax[mode] = np.array(map(lambda h: Cmax_for_LH[mode](L,h), H_range)).min() # the Cmax for all hues
-        RGB [mode] = np.array(map(lambda h: convert.clip3(convert.LCH2RGB(L,Cmax[mode],h)), H_range))
+        Cmax[mode] = Cmax_for_LH[mode](L,H_range) # the Cmax for each hue
+        if sym: Cmax[mode] = Cmax[mode].min() # the Cmax for all hues
+        RGB [mode] = convert.clip3(convert.LCH2RGB(L,Cmax[mode],H_range))
         name = 'equilum_L%03i_H%03i-%03i_%s'%(L,hue(H[0]),hue(H[1]),mode)
         generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
     if out: return RGB
 
 # diverging
 
-def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True, Cres=1, Csteps=0, Cmax=0, targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True, Cres=1, targets=['mpl','png'], png_dir=".", out=False):
     """ For a given L, draws a path from H1 at max chroma to H2 at max chroma
         (if sym==True then Cmax is set for both hues, otherwise for each hue independently)
     """
     RGB = {}
     for mode in modes:
-        if Cmax>0:
-            Cmax1 = Cmax
-            Cmax2 = Cmax
-            Cmax12 = Cmax
-        else:
-            Cmax1 = Cmax_for_LH[mode](L,H1) # the Cmax for H1
-            Cmax2 = Cmax_for_LH[mode](L,H2) # the Cmax for H2
-            Cmax12 = min(Cmax1, Cmax2) # the Cmax that accomodates both hues
-            #print "L = ",L," : Cmax1 = ",Cmax1,", Cmax2 =",Cmax2
-        if Csteps>0: # useful for making 2D maps, by stacking rows of equal length
-            C_range1  = np.linspace(0, Cmax1 , Csteps+1)
-            C_range2  = np.linspace(0, Cmax2 , Csteps+1)
-            C_range12 = np.linspace(0, Cmax12, Csteps+1)
-        else:
-            C_range1  = np.linspace(0, Cmax1 , Cmax1 *Cres+1)
-            C_range2  = np.linspace(0, Cmax2 , Cmax2 *Cres+1)
-            C_range12 = np.linspace(0, Cmax12, Cmax12*Cres+1)
-        RGB[mode] = {}
+        Cmax1 = Cmax_for_LH[mode](L,H1) # the Cmax for H1
+        Cmax2 = Cmax_for_LH[mode](L,H2) # the Cmax for H2
+        Cmax12 = np.minimum(Cmax1, Cmax2) # the Cmax that accomodates both hues
+        #print "L = ",L," : Cmax1 = ",Cmax1,", Cmax2 =",Cmax2
+        C_range1  = np.linspace(0, Cmax1 , Cmax1 *Cres+1)
+        C_range2  = np.linspace(0, Cmax2 , Cmax2 *Cres+1)
+        C_range12 = np.linspace(0, Cmax12, Cmax12*Cres+1)
         if sym:
-            RGB12 = np.array(map(lambda c: convert.clip3(convert.LCH2RGB(L,c,H1)), C_range12)) # H1 side, restricted to Cmax(H2)
-            RGB21 = np.array(map(lambda c: convert.clip3(convert.LCH2RGB(L,c,H2)), C_range12)) # H2 side, restricted to Cmax(H1)
+            RGB12 = convert.clip3(convert.LCH2RGB(L,C_range12,H1)) # H1 side, restricted to Cmax(H2)
+            RGB21 = convert.clip3(convert.LCH2RGB(L,C_range12,H2)) # H2 side, restricted to Cmax(H1)
             RGB[mode] = np.concatenate((RGB12[::-1], RGB21[1:]))
         else:
-            RGB1  = np.array(map(lambda c: convert.clip3(convert.LCH2RGB(L,c,H1)), C_range1 )) # H1 side, full range
-            RGB2  = np.array(map(lambda c: convert.clip3(convert.LCH2RGB(L,c,H2)), C_range2 )) # H2 side, full range
+            RGB1  = convert.clip3(convert.LCH2RGB(L,C_range1 ,H1)) # H1 side, full range
+            RGB2  = convert.clip3(convert.LCH2RGB(L,C_range2 ,H2)) # H2 side, full range
             RGB[mode] = np.concatenate((RGB1 [::-1], RGB2 [1:]))
         name = 'diverging_L%03i_H%03i-%03i_%s'%(L,hue(H1),hue(H2),mode)
         generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
@@ -101,22 +92,34 @@ def make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, modes=['clip','cr
     """
     if len(L)==0: return
     if len(L)==1: L=[L[0],L[0]]
-    L_range = np.linspace(L[0],L[1],abs(L[1]-L[0])*Lres+1)
-    RGB_array = {}
+    L_range = np.linspace(L[0],L[1],int(abs(L[1]-L[0])*Lres)+1)
+    C_range = np.linspace(0, 1, Csteps+1) # normalized to Cmax for this L
+    LL, CC_ = np.meshgrid(L_range,C_range,indexing='ij')
+    RGB = {}
     for mode in modes:
-        RGB_array[mode] = np.zeros((len(L_range),2*Csteps-1,3))
-        for i in range(len(L_range)):
-            RGB_list = make_cmap_diverging(H1, H2, L_range[i], modes=[mode], sym=sym, Csteps=Csteps, targets=[], out=True)
-            for j in range(2*Csteps-1): RGB_array[mode][i,j,0:3] = RGB_list[mode][j]
+        Cmax1 = Cmax_for_LH[mode](L_range,H1) # the Cmax for H1
+        Cmax2 = Cmax_for_LH[mode](L_range,H2) # the Cmax for H2
+        Cmax12 = np.minimum(Cmax1, Cmax2) # the Cmax that accomodates both hues
+        if sym:
+            CC = CC_ * np.repeat(Cmax12[:,np.newaxis],Csteps+1,axis=1)
+            RGB12 = convert.clip3(convert.LCH2RGB(LL,CC,H1)) # H1 side, restricted to Cmax(H2)
+            RGB21 = convert.clip3(convert.LCH2RGB(LL,CC,H2)) # H2 side, restricted to Cmax(H1)
+            RGB[mode] = np.concatenate((RGB12[:,::-1,:], RGB21[:,1:,:]), axis=1)
+        else:
+            CC = CC_ * np.repeat(Cmax1[:,np.newaxis],Csteps+1,axis=1)
+            RGB1  = convert.clip3(convert.LCH2RGB(LL,CC,H1)) # H1 side, full range
+            CC = CC_ * np.repeat(Cmax2[:,np.newaxis],Csteps+1,axis=1)
+            RGB2  = convert.clip3(convert.LCH2RGB(LL,CC,H2)) # H2 side, full range
+            RGB[mode] = np.concatenate((RGB1 [:,::-1,:], RGB2 [:,1:,:]), axis=1)
         name = 'diverging2D_L%03i-%03i_H%03i-%03i_%s'%(L_range[0],L_range[-1],hue(H1),hue(H2),mode)
         fullname = png_dir+"/"+png_prefix+"_"+name+".png"
         if not os.path.exists(png_dir): os.makedirs(png_dir)
-        write_RGB_as_PNG(RGB_array[mode], fname=fullname)
-    if out: return RGB_array
+        write_RGB_as_PNG(RGB[mode], fname=fullname)
+    if out: return RGB
 
 # monohue
 
-def make_cmap_monohue(H, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_monohue(H=0, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, targets=['mpl','png'], png_dir=".", out=False):
     """ For a given H, draws a path from L[0] to L[1] at the maximal C
         (if sym==True then Cmax is set for both L and 100-L, otherwise for each L independently)
     """
@@ -125,11 +128,11 @@ def make_cmap_monohue(H, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, tar
     Cmax = {}
     RGB = {}
     for mode in modes:
-        if sym: Cmax_func = lambda l: min(Cmax_for_LH[mode](l,H), Cmax_for_LH[mode](100-l,H)) # the Cmax for (L,H) and (100-L,H)
-        else:   Cmax_func = lambda l: Cmax_for_LH[mode](l,H)                                  # the Cmax for (L,H)
-        Cmax[mode] = np.array(map(Cmax_func, L_range))
+        if sym: Cmax_func = lambda l: np.minimum(Cmax_for_LH[mode](l,H), Cmax_for_LH[mode](100-l,H)) # the Cmax for (L,H) and (100-L,H)
+        else:   Cmax_func = lambda l: Cmax_for_LH[mode](l,H)                                         # the Cmax for (L,H)
+        #Cmax[mode] = Cmax_func(L_range)
         #print "drawing %s path from (%i, %i, %i) to (%i, %i, %i)"%(mode,L_range[0],Cmax[mode][0],H,L_range[-1],Cmax[mode][-1],H)
-        RGB[mode] = np.array(map(lambda l: convert.clip3(convert.LCH2RGB(l,Cmax_func(l),H)), L_range))
+        RGB[mode] = convert.clip3(convert.LCH2RGB(L_range,Cmax_func(L_range),H))
         name = 'monohue_L%03i-%03i_H%03i_%s'%(L[0],L[1],hue(H),mode)
         generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
     if out: return RGB

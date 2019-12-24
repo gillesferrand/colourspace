@@ -41,16 +41,16 @@ set_convertor('custom')
 # cartesian CIE Lab <-> cylindrical CIE LCH
 
 def LCH2Lab((L,C,H)):
-    L = float(L)
+    #L = float(L)
     a = C * np.cos(H*2*np.pi/360.)
     b = C * np.sin(H*2*np.pi/360.)
     return (L, a, b)
 
 def Lab2LCH((L,a,b)):
-    L = float(L)
+    #L = float(L)
     C = np.sqrt(a**2+b**2)
     H = np.arctan2(b,a) * 360/(2*np.pi)
-    if H<0: H += 360
+    H = np.where(H<0, H+360, H)
     return (L, C, H)
 
 # perceptual CIE XYZ <-> uniform CIE Lab
@@ -82,14 +82,10 @@ def Lab2XYZ((L,a,b)):
     return (X,Y,Z)
 
 def f_forward(x):
-    if x > (6/29)**3: f = x**(1/3.)
-    else:             f = 1/3.*(29/6.)**2*x+4/29.
-    return f
+    return np.where(x > (6/29)**3, x**(1/3.), 1/3.*(29/6.)**2*x+4/29.)
 
 def f_reverse(x):
-    if x > 6/29.: f = x**3
-    else:         f = 3*(6/29.)**2*(x-4/29.)
-    return f
+    return np.where(x > 6/29., x**3, 3*(6/29.)**2*(x-4/29.))
 
 # human CIE XYZ <-> machine sRGB
 
@@ -108,28 +104,25 @@ def RGB2XYZ((R,G,B)):
     return (X,Y,Z)
 
 def gamma_forward(Cln):
-    if Cln <= 0.0031308: Cnl = 12.92*Cln
-    else:                Cnl = 1.055*(Cln**(1/2.4))-0.055
-    return Cnl
+    return np.where(Cln <= 0.0031308, 12.92*Cln, 1.055*(Cln**(1/2.4))-0.055)
 
 def gamma_reverse(Cnl):
-    if Cnl <= 0.04045: Cln = Cnl/12.92
-    else:              Cln = ((Cnl+0.055)/1.055)**2.4
-    return Cln
+    return np.where(Cnl <= 0.04045, Cnl/12.92, ((Cnl+0.055)/1.055)**2.4)
 
 # RGB gamut check
 
 def crop1(R,(min,max)=(0,1)):
-    if min <= R <= max: return R
-    else: return np. nan
+    R_crop = np.where(R      < min, np.nan, R     )
+    R_crop = np.where(R_crop > max, np.nan, R_crop)
+    return R_crop
 
 def crop3((R,G,B),(min,max)=(0,1)):
-    return (crop1(R,[min,max]),crop1(G,[min,max]),crop1(B,[min,max]))
+    return np.stack((crop1(R,[min,max]),crop1(G,[min,max]),crop1(B,[min,max])),axis=-1)
 
 def clip1(R,(min,max)=(0,1)):
-    if R < min: R = min
-    if R > max: R = max
-    return R
+    R_clip = np.where(R      < min, min, R     )
+    R_clip = np.where(R_clip > max, max, R_clip)
+    return R_clip
 
 def clip3((R,G,B),(min,max)=(0,1)):
-    return (clip1(R,[min,max]),clip1(G,[min,max]),clip1(B,[min,max]))
+    return np.stack((clip1(R,[min,max]),clip1(G,[min,max]),clip1(B,[min,max])),axis=-1)

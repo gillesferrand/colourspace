@@ -10,7 +10,6 @@ import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import interpolate
-#import colour # http://colour-science.org
 from . import convert
 from . import limits
 
@@ -31,67 +30,70 @@ H_min = 0 ; H_max = 360
 # method 1: sample the LH plane, for each point convert to native space and check if within limits
 #---------------------------
 
-def valid_LCH_full(LCH):
+def valid_LCH_full(L,C,H):
     """ Checks if a LCH colour is in the human gamut """
-    # using colour-science triangulation: not precise
-    #illuminant='D65'
-    #XYZ = colour.Lab_to_XYZ(colour.LCHab_to_Lab(LCH), illuminant=colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][illuminant])
-    #xyY = colour.XYZ_to_xyY(XYZ)
-    #return colour.volume.macadam_limits.is_within_macadam_limits(xyY,illuminant)
-    XYZ = convert.Lab2XYZ(convert.LCH2Lab((LCH[0],LCH[1],LCH[2])))
-    return limits.within_limits(XYZ,'XYZ')
+    X,Y,Z = convert.Lab2XYZ(convert.LCH2Lab((L,C,H)))
+    XYZ = np.stack((X,Y,Z),axis=-1)
+    return limits.within_limits(XYZ,'XYZ',kind='cmp') # assumes limits have been set
 
-def valid_LCH_sRGB(LCH):
+def valid_LCH_sRGB(L,C,H):
     """ Checks if a LCH colour is in the sRGB gamut """
-    valid = lambda x: 0 <= x and x <= 1
-    #illuminant='D65'
-    #XYZ = colour.Lab_to_XYZ(colour.LCHab_to_Lab(LCH), illuminant=colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][illuminant])
-    #RGB = colour.XYZ_to_sRGB(colour.Lab_to_XYZ(colour.LCHab_to_Lab(LCH), illuminant=colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][illuminant]))
-    #return valid(RGB[0]) and valid(RGB[1]) and valid(RGB[2])
-    R,G,B = convert.LCH2RGB(LCH[0],LCH[1],LCH[2])
-    return valid(R) and valid(G) and valid(B)
+    R,G,B = convert.LCH2RGB(L,C,H)
+    valid = lambda x: np.logical_and(0 <= x, x <= 1)
+    return valid(R)*valid(G)*valid(B)
+    #return np.logical_and(np.logical_and(valid(R),valid(G)),valid(B))
 
 valid_LCH = {"full": valid_LCH_full, \
              "sRGB": valid_LCH_sRGB}
 
-def find_Cmax_forward(res, gamut, verbose=False, save=False, plot=True):
+def find_Cmax_forward(res, gamut, save=False, plot=True, version='mapping'):
     """ Finds the maximum Cmax for each (L,H) pair with a precision of res points per unit of L,C,H """
     if res not in Cmax.keys(): Cmax[res] = {}
+    if gamut=='full' and not 'XYZ' in limits.triangulation['cmp'].keys():
+        limits.set_limits(l_step=10, l_min=360, l_max=780)
+        limits.triangulate('XYZ')
     L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
     H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
-    # version with loops
     Cmax[res][gamut] = np.zeros((len(L),len(H)),dtype=np.float32)
-    for i in range(len(L)):
-        for k in range(len(H)):
-            Cmax[res][gamut][i,k] = find_Cmax_for_LH(L=L[i], H=H[k], Cres=1./res, gamut=gamut)
-            if verbose:
+    # version with loops
+    if version == 'looping':
+        for i in range(len(L)):
+            for k in range(len(H)):
+                Cmax[res][gamut][i,k] = find_Cmax_for_LH(L=L[i], H=H[k], Cres=1./res, gamut=gamut)
                 sys.stdout.write("L = %.2f, H = %.2f, Cmax = %.2f"%(L[i],H[k],Cmax[res][gamut][i,k]))
                 sys.stdout.write("\r")
                 sys.stdout.flush()
-    if verbose:
         sys.stdout.write("\n")
         sys.stdout.flush()
     # version with mapping
-    #LH = [(L[i], H[k]) for i in range(len(L)) for k in range(len(H))]
-    #function = lambda (x,y) : find_Cmax_for_LH(L=x, H=y, res=res, validator=validator, verbose=False)
-    #Cmax[res][gamut] = np.reshape(map(function,LH), (len(L),len(H)))
+    if version == 'mapping':
+        LL, HH = np.meshgrid(L,H,indexing='ij')
+        Cmax[res][gamut][:,:] = find_Cmax_for_LH(LL, HH, Cres=1./res, gamut=gamut)
+    if version == 'mapping3D':
+        C = np.linspace(0, 200, int(200.*res)+1)
+        LLL, CCC, HHH = np.meshgrid(L,C,H,indexing='ij')
+        valid = valid_LCH[gamut](LLL,CCC,HHH)
+        for i in range(len(L)):
+            for k in range(len(H)):
+                j_valid = np.where(valid[i,:,k])[0]
+                Cmax[res][gamut][i,k] = C[j_valid[-1]] if len(j_valid)>0 else 0
     if save: save_Cmax_npy(res=res, gamut=gamut)
     if plot: plot_Cmax(res=res, gamut=gamut)
 
 def find_Cmax_for_LH(L, H, Cres, gamut):
     """Finds the maximum C for a given (L,H) at a given resolution in a given gamut"""
-    if L>=0 and L<=100 and H>=0 and H<=360:
-        if L>0 and L<100:
-            validator = lambda c: valid_LCH[gamut]([L,c,H])
-            Cmax = find_edge_by_dichotomy(validator, xmin=0, xmax=200, dx=Cres)
-        else:
-            Cmax = 0
-    else:
-        Cmax = np.nan
+    edge_detector = lambda L,H: find_edge_by_dichotomy(lambda c: valid_LCH[gamut](L,c,H), xmin=0, xmax=200, dx=Cres)
+    Cmax = np.vectorize(edge_detector)(L,H)
+    Cmax = np.where(L<=  0,     0,Cmax)
+    Cmax = np.where(L>=100,     0,Cmax)
+    Cmax = np.where(L<   0,np.nan,Cmax)
+    Cmax = np.where(L> 100,np.nan,Cmax)
+    #Cmax = np.where(np.logical_or(L<=0,L>=100),     0,Cmax)
+    #Cmax = np.where(np.logical_or(L< 0,L> 100),np.nan,Cmax)
     return Cmax
 
 def find_edge_by_dichotomy(func, xmin, xmax, dx=1., iter_max=100):
-    """returns the point `x` (within resolution `dx`) where boolean function `func` changes value
+    """Returns the point `x` (within resolution `dx`) where boolean function `func` changes value
        `func` is assumed to switch from True to False between `xmin` and `xmax`
     """
     xleft  = xmin
@@ -116,38 +118,31 @@ def find_edge_by_dichotomy(func, xmin, xmax, dx=1., iter_max=100):
 # method 2: discretize the gamut boundary in the native space, project it back to the LH plane
 #---------------------------
 
-def get_RGB_faces(num=10,verbose=False):
-    RGB_list = np.zeros((num**2*6,3))
-    value = lambda face: 0 if '-' in face else 1
-    faces = ["-R","+R","-G","+G","-B","+B"]
-    for i in range(len(faces)):
-        R = np.array([value(faces[i])]) if 'R' in faces[i] else np.linspace(0,1,num)
-        G = np.array([value(faces[i])]) if 'G' in faces[i] else np.linspace(0,1,num)
-        B = np.array([value(faces[i])]) if 'B' in faces[i] else np.linspace(0,1,num)
-        for j in range(num):
-            for k in range(num):
-                if 'R' in faces[i]: iR = 0 ; iG = j ; iB = k
-                if 'G' in faces[i]: iR = j ; iG = 0 ; iB = k
-                if 'B' in faces[i]: iR = j ; iG = k ; iB = 0
-                ijk = (i*num + j)*num + k
-                RGB_list[ijk,:] = [R[iR], G[iG], B[iB]]
-                if verbose:
-                    text = "R = %4.2f, G = %4.2f, B = %4.2f (%3.0f%%)\r"%(R[iR],G[iG],B[iB],100*(ijk+1)/(num**2*6))
-                    sys.stdout.write(text)
-                    sys.stdout.flush()
-    if verbose:
-        sys.stdout.write("\n")
-        sys.stdout.flush
-    return RGB_list
+def get_RGB_faces(num=10):
+    """ Samples the faces of the RGB cube with `num` points per axis """
+    array = {}
+    for coord in ['R','G','B']: array[coord] = np.array([])
+    block = {}
+    block['0'] = np.zeros(num**2)
+    block['1'] = np.ones( num**2)
+    x = np.linspace(0,1,num)
+    X,Y = np.meshgrid(x,x)
+    block['x'] = X.flatten()
+    block['y'] = Y.flatten()
+    for x,y,z in [('R','G','B'), ('G','B','R'), ('B','R','G')]:
+        for side in ['0','1']:
+            array[x] = np.concatenate((array[x], block['x']))
+            array[y] = np.concatenate((array[y], block['y']))
+            array[z] = np.concatenate((array[z], block[side]))
+    return array['R'],array['G'],array['B']
 
 def get_edges_LCH_sRGB(res):
-    RGB = get_RGB_faces(num=res)
-    LCH = np.zeros((len(RGB),3))
-    for i in range(len(RGB)): LCH[i] = convert.RGB2LCH(RGB[i][0],RGB[i][1],RGB[i][2])
-    return LCH
+    R,G,B = get_RGB_faces(num=res)
+    L,C,H = convert.RGB2LCH(R,G,B)
+    return np.stack((L,C,H),axis=-1)
 
 def get_edges_LCH_full(res):
-    limits.set_limits(l_min=360, l_max=780, l_step=res)
+    limits.set_limits(l_step=res, l_min=360, l_max=780)
     return limits.limits['cmp']['LCH']
 
 get_edges_LCH = {"full": get_edges_LCH_full, \
@@ -172,7 +167,7 @@ def find_Cmax_backward(res_native, res_LH, gamut, save=False, plot=True):
     # fix the edges
     C_grid[:, 0] = 0.5*(C_grid[:,1]+C_grid[:,-2])
     C_grid[:,-1] = 0.5*(C_grid[:,1]+C_grid[:,-2])
-    
+
     Cmax[res_LH][gamut] = np.zeros(C_grid.shape,dtype=np.float32)
     Cmax[res_LH][gamut][:,:] = C_grid[:,:]
     if save: save_Cmax_npy(res=res_LH, gamut=gamut)
@@ -218,9 +213,10 @@ def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize
             plt.tricontourf(H,L,C, cmap=cmap, norm=norm)
             if marker != '':
                 ax = plt.gca()
-                if colour != '':
+                if len(colour)>0:
                     ax.plot(H,L,marker,c=colour)
                 else:
+                    #ax.plot(H,L,marker,color=convert.clip3(convert.LCH2RGB(L,C,H)).tolist())
                     for h, l, c in zip(H, L, array): ax.plot(h,l,marker,color=convert.clip3(convert.LCH2RGB(c[0],c[1],c[2])))
             plt.gca().set_aspect(aspect)
         else:
@@ -240,8 +236,8 @@ def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize
         plt.imsave(arr=array, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, fname=fname+"_axoff"+ext)
         #plt.imsave(fname+"_axoff"+ext, plt.get_cmap(cmap)(norm(np.flipud(array))))
 
-def plot3D(RGB_list, angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
-    """ Plots a set of RGB points in 3D
+def plot3D((R,G,B), angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
+    """ Plots a set of (R,G,B) points in 3D
         (beware: mplot3d does not composite colours correctly, and cannot handle large sets)
     """
     # figure
@@ -256,11 +252,12 @@ def plot3D(RGB_list, angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
     ax.view_init(angle[0],angle[1])
     #ax.grid(False)
     # plot
+    #R = RGB_list[:,0]
+    #G = RGB_list[:,1]
+    #B = RGB_list[:,2]
+    RGB_list = np.stack((R,G,B),axis=-1)
     print len(RGB_list)," points"
-    x = RGB_list[:,0]
-    y = RGB_list[:,1]
-    z = RGB_list[:,2]
-    ax.scatter(x,y,z,color=RGB_list,marker='o',depthshade=False)
+    ax.scatter(R,G,B,color=RGB_list,marker='o',depthshade=False)
     # save
     if dir != "":
         fname = "%s/%s_%s.png"%(dir,fname,space)
@@ -337,31 +334,32 @@ def Cmax_for_LH(L,H,res=1,gamut='full'):
         at a given resolution in a given gamut """
     global Cmax
     set_Cmax(res,gamut) # the gamut array is cached
-    Cmax_ = Cmax[res][gamut]
+    H = H%360
+    L_valid = np.logical_and(L>=0, L<=100)
+    C = np.where(L_valid,interpolate_Cmax_for_LH(L,H,Cmax[res][gamut]),np.nan)
+    return C
+
+def interpolate_Cmax_for_LH(L,H,Cmax):
+    """ Bi-linearly interpolates tabulated Cmax(L,H) at given L,H
+        (expects L in [L_min,L_max] = [0,100] and H in [H_min,Hmax] = [0,360])
+    """
     # L
-    if not(0<=L<=100):
-        print "Invalid L"
-        return
-    nL = Cmax_.shape[0]
+    nL = Cmax.shape[0]
     i = (L-L_min)/float(L_max-L_min) * (nL-1)
-    i0 = int(np.floor(i))
-    i1 = i0 + 1
-    if i1 > nL-1: i1 = i0
+    i0 = (np.floor(i)).astype(int)
+    i0 = np.maximum(np.minimum(i0,nL-1),0)
+    i1 = np.where(i0 < nL-1, i0 + 1, i0)
     x = i - i0
     # H
-    if not(0<=H):
-        print "Invalid H"
-        return
-    H = H%360
-    nH = Cmax_.shape[1]
+    nH = Cmax.shape[1]
     j = (H-H_min)/float(H_max-H_min) * (nH-1)
-    j0 = int(np.floor(j))
-    j1 = j0 + 1
-    if j1 > nH-1: j1 = j0
+    j0 = (np.floor(j)).astype(int)
+    j0 = np.maximum(np.minimum(j0,nH-1),0)
+    j1 = np.where(j0 < nH-1, j0 + 1, j0)
     y = j - j0
     # C (bilinear interpolation)
-    C = Cmax_[i0,j0] * (1-x)*(1-y) \
-      + Cmax_[i0,j1] * (1-x)*   y  \
-      + Cmax_[i1,j0] *    x *(1-y) \
-      + Cmax_[i1,j1] *    x *   y
+    C = Cmax[i0,j0] * (1-x)*(1-y) \
+      + Cmax[i0,j1] * (1-x)*   y  \
+      + Cmax[i1,j0] *    x *(1-y) \
+      + Cmax[i1,j1] *    x *   y
     return C

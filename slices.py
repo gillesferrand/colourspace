@@ -35,26 +35,18 @@ def LH_plane(C,L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",mod
     nH = int((H[1]-H[0])*res+1)
     L_range = np.linspace(L[0],L[1],nL)
     H_range = np.linspace(H[0],H[1],nH)
+    LL, HH = np.meshgrid(L_range,H_range,indexing='ij')
+    Cmax = {}
+    valid = {}
+    for gmt in ['sRGB','full']:
+        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gamut=gmt)
+        valid[gmt] = np.logical_and(C>=0, C<=Cmax[gmt])[:,:,np.newaxis]
     arr = {}
     for mode in ['crop','clip']:
-        arr[mode] = np.ones((nL,nH,3),dtype=np.float32)
-    RGB_black = (0, 0, 0)
-    for i in range(len(L_range)):
-        RGB_gray = convert.clip3(convert.LCH2RGB(L_range[i],0,0))
-        for k in range(len(H_range)):
-            display_triplet(L_range[i],C,H_range[k])
-            if C <= gamut.Cmax_for_LH(L_range[i],H_range[k],res=res_gamut,gamut='full'):
-                RGB = convert.LCH2RGB(L_range[i],C,H_range[k])
-                RGB_crop = convert.crop3(RGB)
-                if np.nan in RGB_crop: RGB_crop = RGB_gray
-                RGB_clip = convert.clip3(RGB)
-            else:
-                RGB_crop = RGB_black
-                RGB_clip = RGB_black
-            arr['crop'][i,k] = RGB_crop
-            arr['clip'][i,k] = RGB_clip
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+        arr[mode] = np.zeros((nL,nH,3),dtype=np.float32)
+    arr['clip'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL,C,HH)), arr['clip'])
+    arr['crop'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL,0,HH)), arr['crop'])
+    arr['crop'] = np.where(valid['sRGB'], convert.clip3(convert.LCH2RGB(LL,C,HH)), arr['crop'])
     # figure
     ext = "C%03i"%C
     xlabel = "H"
@@ -73,35 +65,24 @@ def LH_plane_max(L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",k
     nH = int((H[1]-H[0])*res+1)
     L_range = np.linspace(L[0],L[1],nL)
     H_range = np.linspace(H[0],H[1],nH)
+    LL, HH = np.meshgrid(L_range,H_range,indexing='ij')
     arr = {}
     for kind in ['equ','max']:
         arr[kind] = {}
         for mode in ['crop','clip']:
-            arr[kind][mode] = np.ones((nL,nH,3),dtype=np.float32)
-    for i in range(len(L_range)):
-        RGB_gray = convert.clip3(convert.LCH2RGB(L_range[i],0,0))
-        LH = [[L_range[i], H_range[k]] for k in range(len(H_range))]
-        Cmax_full = np.array(map(lambda (l,h): gamut.Cmax_for_LH(l,h,res=res_gamut,gamut='full'), LH)).min()
-        Cmax_sRGB = np.array(map(lambda (l,h): gamut.Cmax_for_LH(l,h,res=res_gamut,gamut='sRGB'), LH)).min()
-        for k in range(len(H_range)):
-            # maximal possible chroma for all hues, in the cropped space
-            C = Cmax_sRGB
-            display_triplet(L_range[i],C,H_range[k])
-            arr['equ']['crop'][i,k] = convert.clip3(convert.LCH2RGB(L_range[i],C,H_range[k]))
-            # maximal possible chroma for this hue, in the cropped space
-            C = gamut.Cmax_for_LH(L_range[i],H_range[k],res=res_gamut,gamut='sRGB')
-            display_triplet(L_range[i],C,H_range[k])
-            arr['max']['crop'][i,k] = convert.clip3(convert.LCH2RGB(L_range[i],C,H_range[k]))
-            # maximal possible chroma for all hues, in the clipped space
-            C = Cmax_full
-            display_triplet(L_range[i],C,H_range[k])
-            arr['equ']['clip'][i,k] = convert.clip3(convert.LCH2RGB(L_range[i],C,H_range[k]))
-            # maximal possible chroma for this hue, in the clipped space
-            C = gamut.Cmax_for_LH(L_range[i],H_range[k],res=res_gamut,gamut='full')
-            display_triplet(L_range[i],C,H_range[k])
-            arr['max']['clip'][i,k] = convert.clip3(convert.LCH2RGB(L_range[i],C,H_range[k]))
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+            arr[kind][mode] = np.zeros((nL,nH,3),dtype=np.float32)
+    Cmax = {}
+    # maximal possible chroma for each hue
+    for gmt in ['sRGB','full']:
+        Cmax[gmt] = gamut.Cmax_for_LH(LL,HH,res=res_gamut,gamut=gmt)
+    arr['max']['crop'] = convert.clip3(convert.LCH2RGB(LL,Cmax['sRGB'],HH))
+    arr['max']['clip'] = convert.clip3(convert.LCH2RGB(LL,Cmax['full'],HH))
+    # maximal possible chroma for all hues
+    for gmt in ['sRGB','full']:
+        Cmax[gmt] = np.amin(Cmax[gmt],axis=1)
+        Cmax[gmt] = np.repeat(Cmax[gmt][:,np.newaxis],nH,axis=-1)
+    arr['equ']['crop'] = convert.clip3(convert.LCH2RGB(LL,Cmax['sRGB'],HH))
+    arr['equ']['clip'] = convert.clip3(convert.LCH2RGB(LL,Cmax['full'],HH))
     # figure
     xlabel = "H"
     ylabel = "L"
@@ -128,39 +109,34 @@ def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name
     nC = int((C[1]-C[0])*res+1)
     nH = int((H[1]-H[0])*res+1)
     H_range = np.linspace(H[0],H[1],nH)
+    C_range = np.linspace(C[0],C[1],nC)
+    CC_, HH = np.meshgrid(C_range,H_range,indexing='ij')
+    Cmax = {}
+    for gmt in ['sRGB','full']:
+        #Cmax[gmt] = gamut.Cmax_for_LH(L,HH,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(L,H_range,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = np.repeat(Cmax[gmt][np.newaxis,:],nC,axis=0)
+    valid = {}
     arr = {}
     for mode in ['crop','clip']:
-        arr[mode] = np.ones((nC,nH,3),dtype=np.float32)
-    RGB_black = (0, 0, 0)
-    RGB_gray = convert.clip3(convert.LCH2RGB(L,0,0))
-    for k in range(len(H_range)):
-        Cmax_sRGB = gamut.Cmax_for_LH(L,H_range[k],res=res_gamut,gamut='sRGB')
-        Cmax_full = gamut.Cmax_for_LH(L,H_range[k],res=res_gamut,gamut='full')
-        if stretch:
-            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_sRGB,nC) # C up to max representable
-            for j in range(len(C_range)):
-                display_triplet(L,C_range[j],H_range[k])
-                arr['crop'][j,k] = convert.clip3(convert.LCH2RGB(L,C_range[j],H_range[k]))
-            C_range = np.linspace(C[0]/100.*Cmax_full,C[1]/100.*Cmax_full,nC) # C up to max possible
-            for j in range(len(C_range)):
-                display_triplet(L,C_range[j],H_range[k])
-                arr['clip'][j,k] = convert.clip3(convert.LCH2RGB(L,C_range[j],H_range[k]))
-        else:
-            C_range = np.linspace(C[0],C[1],nC)
-            for j in range(len(C_range)):
-                display_triplet(L,C_range[j],H_range[k])
-                if C_range[j] <= Cmax_full:
-                    RGB = convert.LCH2RGB(L,C_range[j],H_range[k])
-                    RGB_crop = convert.crop3(RGB)
-                    if np.nan in RGB_crop: RGB_crop = RGB_gray
-                    RGB_clip = convert.clip3(RGB)
-                else:
-                    RGB_crop = RGB_black
-                    RGB_clip = RGB_black
-                arr['crop'][j,k] = RGB_crop
-                arr['clip'][j,k] = RGB_clip
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+        arr[mode] = np.zeros((nC,nH,3),dtype=np.float32)
+    if stretch:
+        # C up to max representable
+        CC = CC_/100.*Cmax['sRGB']
+        for gmt in ['sRGB','full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['crop'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(L, 0,HH)), arr['crop'])
+        arr['crop'] = np.where(valid['sRGB'], convert.clip3(convert.LCH2RGB(L,CC,HH)), arr['crop'])
+        # C up to max possible
+        CC = CC_/100.*Cmax['full']
+        for gmt in [       'full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['clip'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(L,CC,HH)), arr['clip'])
+    else:
+        # C as given
+        CC = CC_
+        for gmt in ['sRGB','full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['clip'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(L,CC,HH)), arr['clip'])
+        arr['crop'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(L, 0,HH)), arr['crop'])
+        arr['crop'] = np.where(valid['sRGB'], convert.clip3(convert.LCH2RGB(L,CC,HH)), arr['crop'])
     # figure
     ext = "L%03i"%L
     xlabel = "H"
@@ -190,39 +166,34 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
     nL = int((L[1]-L[0])*res+1)
     nC = int((C[1]-C[0])*res+1)
     L_range = np.linspace(L[0],L[1],nL)
+    C_range = np.linspace(C[0],C[1],nC)
+    LL, CC_ = np.meshgrid(L_range,C_range,indexing='ij')
+    Cmax = {}
+    for gmt in ['sRGB','full']:
+        #Cmax[gmt] = gamut.Cmax_for_LH(LL,H,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = gamut.Cmax_for_LH(L_range,H,res=res_gamut,gamut=gmt)
+        Cmax[gmt] = np.repeat(Cmax[gmt][:,np.newaxis],nC,axis=1)
+    valid = {}
     arr = {}
     for mode in ['crop','clip']:
-        arr[mode] = np.ones((nL,nC,3),dtype=np.float32)
-    RGB_black = (0, 0, 0)
-    for i in range(len(L_range)):
-        Cmax_sRGB = gamut.Cmax_for_LH(L_range[i],H,res=res_gamut,gamut='sRGB')
-        Cmax_full = gamut.Cmax_for_LH(L_range[i],H,res=res_gamut,gamut='full')
-        if stretch:
-            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_sRGB,nC) # C up to max representable
-            for j in range(len(C_range)):
-                display_triplet(L_range[i],C_range[j],H)
-                arr['crop'][i,j] = convert.clip3(convert.LCH2RGB(L_range[i],C_range[j],H))
-            C_range = np.linspace(C[0]/100.*Cmax_sRGB,C[1]/100.*Cmax_full,nC) # C up to max possible
-            for j in range(len(C_range)):
-                display_triplet(L_range[i],C_range[j],H)
-                arr['clip'][i,j] = convert.clip3(convert.LCH2RGB(L_range[i],C_range[j],H))
-        else:
-            RGB_gray = convert.clip3(convert.LCH2RGB(L_range[i],0,0))
-            C_range = np.linspace(C[0],C[1],nC) # C as requested
-            for j in range(len(C_range)):
-                display_triplet(L_range[i],C_range[j],H)
-                if C_range[j] <= Cmax_full:
-                    RGB = convert.LCH2RGB(L_range[i],C_range[j],H)
-                    RGB_crop = convert.crop3(RGB)
-                    if np.nan in RGB_crop: RGB_crop = RGB_gray
-                    RGB_clip = convert.clip3(RGB)
-                else:
-                    RGB_crop = RGB_black
-                    RGB_clip = RGB_black
-                arr['crop'][i,j] = RGB_crop
-                arr['clip'][i,j] = RGB_clip
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+        arr[mode] = np.zeros((nL,nC,3),dtype=np.float32)
+    if stretch:
+        # C up to max representable
+        CC = CC_/100.*Cmax['sRGB']
+        for gmt in ['sRGB','full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['crop'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL, 0,H)), arr['crop'])
+        arr['crop'] = np.where(valid['sRGB'], convert.clip3(convert.LCH2RGB(LL,CC,H)), arr['crop'])
+        # C up to max possible
+        CC = CC_/100.*Cmax['full']
+        for gmt in [       'full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['clip'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL,CC,H)), arr['clip'])
+    else:
+        # C as given
+        CC = CC_
+        for gmt in ['sRGB','full']: valid[gmt] = np.logical_and(CC>=0, CC<=Cmax[gmt])[:,:,np.newaxis]
+        arr['clip'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL,CC,H)), arr['clip'])
+        arr['crop'] = np.where(valid['full'], convert.clip3(convert.LCH2RGB(LL, 0,H)), arr['crop'])
+        arr['crop'] = np.where(valid['sRGB'], convert.clip3(convert.LCH2RGB(LL,CC,H)), arr['crop'])
     # figure
     ext = "H%03i"%H
     xlabel = "C"
@@ -244,19 +215,13 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
 def all_planes(slices=['LH','CH','LC'], res=1, dir='.',modes=['crop','clip'], axes=['on','off']):
     """ Generates all the planes """
     if 'LH' in slices:
-        LH_planes(C=np.arange(0,201,1), L=[0,100], H=[0,360], res=res, dir=dir, modes=modes, axes=axes)
-        LH_plane_max(                   L=[0,100], H=[0,360], res=res, dir=dir, modes=modes, axes=axes)
+        LH_planes(C=np.arange(0,201,1), L=[0,100], H=[0,360], res=res, dir=dir, modes=modes, axes=axes, showfig=False)
+        LH_plane_max(                   L=[0,100], H=[0,360], res=res, dir=dir, modes=modes, axes=axes, showfig=False)
     if 'CH' in slices:
-        CH_planes(L=np.arange(0,101,1), C=[0,200], H=[0,360], res=res, dir=dir, modes=modes, axes=axes)
+        CH_planes(L=np.arange(0,101,1), C=[0,200], H=[0,360], res=res, dir=dir, modes=modes, axes=axes, showfig=False)
     if 'LC' in slices:
-        LC_planes(H=np.arange(0,360,1), L=[0,100], C=[0,200], res=res, dir=dir, modes=modes, axes=axes, stretch=False)
-        LC_planes(H=np.arange(0,360,1), L=[0,100], C=[0,100], res=res, dir=dir, modes=modes, axes=axes, stretch=True)
-
-def display_triplet(L,C,H,newline=False):
-    """ Prints the (L,C,H) values """
-    sys.stdout.write("L = %6.2f, C = %6.2f, H = %6.2f"%(L,C,H))
-    sys.stdout.write("\n") if newline else sys.stdout.write("\r")
-    sys.stdout.flush()
+        LC_planes(H=np.arange(0,360,1), L=[0,100], C=[0,200], res=res, dir=dir, modes=modes, axes=axes, showfig=False, stretch=False)
+        LC_planes(H=np.arange(0,360,1), L=[0,100], C=[0,100], res=res, dir=dir, modes=modes, axes=axes, showfig=False, stretch=True)
 
 L_ticks = np.arange(int(100/25.)+1)*25
 H_ticks = np.arange(int(360/90.)+1)*90
