@@ -154,7 +154,7 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
             if 'mpl' in targets:
                 for L in np.arange(20,90,10):
                     make_cmap_equilum(L=L, H=[0,250], Hres=2, modes=[mode], targets=['mpl'])
-                if plot: plot_cmaps(title="equilum_%s"%mode, fig=0, dir=dir)
+                if plot: plot_cmaps(title="equilum_%s colour maps"%mode, fig=0, dir=dir)
     if 'diverging' in types:
         print "---------"
         print "diverging"
@@ -168,7 +168,7 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
             if 'mpl' in targets:
                 for L in np.arange(20,90,10):
                     make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], targets=['mpl'])
-                if plot: plot_cmaps(title="diverging_%s"%mode, fig=0, dir=dir)
+                if plot: plot_cmaps(title="diverging_%s colour maps"%mode, fig=0, dir=dir)
     if 'monohue' in types:
         print "-------"
         print "monohue"
@@ -185,7 +185,7 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
                     make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
                     make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=False, modes=[mode], targets=['mpl'])
-                if plot: plot_cmaps(title="monohue_%s"%mode, fig=0, dir=dir)
+                if plot: plot_cmaps(title="monohue_%s colour maps"%mode, fig=0, dir=dir)
 
 
 # generate colour maps for Matplotlib, or as PNG
@@ -217,26 +217,68 @@ def register_to_mpl(names, reversed=True):
 
 # plotting
 
-def plot_cmaps(names=[], reverse=False, width=256, height=32, fig=1, figsize=None, title="", dir=".", fname_all="cmaps", fname="cmap"):
-    """ Plots all colour maps listed by name (in the local cache CMAP) """
+def get_cmap(name, nsteps=None):
+    """ Returns a named colour map, looking first in the local cache CMAP, then in Matplotlib's registered colours
+        optionally resampled in `nsteps` bins
+    """
+    if name in CMAP.keys():
+        cmap = CMAP[name]
+    elif name in matplotlib.cm.cmap_d.keys():
+        cmap = matplotlib.cm.cmap_d[name]
+    else:
+        print "Unknown cmap: ",name
+        cmap = None
+    if cmap != None and nsteps>0: cmap = cmap._resample(nsteps)
+    return cmap
+
+def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
+    """ Plots all colour maps listed by name
+        If `fname` is set writes them individually as PNG images of size `width` by `height`
+        If `fname_all` is set writes the figure with all of them as a PNG image
+    """
     # adapted from http://matplotlib.org/examples/color/colormaps_reference.html
     if len(names)==0: names = list_all(reverse=reverse)
     nrows = len(names)
     if nrows == 0: return
     plt.close(fig)
-    figure, axes = plt.subplots(num=fig, nrows=nrows, figsize=figsize)
-    figure.subplots_adjust(top=0.95, bottom=0.01, left=0.2, right=0.99)
-    axes[0].set_title(title+" colour maps", fontsize=14)
+    fig, axes = plt.subplots(num=fig, nrows=nrows, figsize=figsize)
+    if not hasattr(axes, "__len__"): axes = [axes]
+    # adjust layout
+    fig_w, fig_h = fig.get_size_inches()*72 # size in points
+    pad = 0.05
+    left   = 0 + pad*min(fig_w,fig_h)/fig_w
+    right  = 1 - pad*min(fig_w,fig_h)/fig_w
+    bottom = 0 + pad*min(fig_w,fig_h)/fig_h
+    top    = 1 - pad*min(fig_w,fig_h)/fig_h
+    wspace = 0
+    hspace = (labelsize/fig_h)*nrows #pad*nrows
+    if labels=="left"  : left   += (labelsize*15/fig_w)
+    if labels=="right" : right  -= (labelsize*15/fig_w)
+    if labels=="bottom": bottom += (labelsize/fig_h) ; hspace += (labelsize/fig_h)*nrows
+    if labels=="top"   : top    -= (labelsize/fig_h) ; hspace += (labelsize/fig_h)*nrows
+    if title!="": top -= titlesize/fig_h
+    fig.subplots_adjust(left=left, right=right, bottom=bottom, top=top, wspace=wspace, hspace=hspace)
+    fig.suptitle(title, fontsize=titlesize)
     gradient = np.linspace(0, 1, width)
     for ax, name in zip(axes, names):
-        cmap = CMAP[name]
-        ax.imshow(np.tile(gradient,(2,1)), aspect='auto', interpolation='nearest', cmap=cmap)
-        ax.set_axis_off() # turn off *all* ticks and spines
-        pos = list(ax.get_position().bounds)
-        x_text = pos[0] - 0.01
-        y_text = pos[1] + pos[3]/2.
-        figure.text(x_text, y_text, name, va='center', ha='right', fontsize=10, family='monospace')
-        if fname != "":
+        cmap = get_cmap(name, nsteps)
+        if cmap!=None:
+            ax.imshow(np.tile(gradient,(2,1)), aspect='auto', interpolation='nearest', cmap=cmap)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if not frame:
+            for pos in ['top','right','bottom','left']: ax.spines[pos].set_visible(False)
+        if labels=="left":
+            ax.set_ylabel(name, fontsize=labelsize, family='monospace', rotation='horizontal', ha='right', va='center')
+        if labels=="right":
+            ax.yaxis.set_label_position("right")
+            ax.set_ylabel(name, fontsize=labelsize, family='monospace', rotation='horizontal', ha='left' , va='center')
+        if labels=="bottom":
+            ax.set_xlabel(name, fontsize=labelsize, family='monospace', rotation='horizontal', ha='center', va='top')
+        if labels=="top":
+            ax.set_xlabel(name, fontsize=labelsize, family='monospace', rotation='horizontal', ha='center', va='bottom')
+            ax.xaxis.set_label_position("top")
+        if fname != "" and cmap!=None:
             fullname = "%s/%s%i_%s.png"%(dir,fname,width,name)
             print 'writing ',fullname
             plt.imsave(arr=np.tile(gradient,(height,1)), origin='lower', fname=fullname, cmap=cmap)
@@ -246,34 +288,39 @@ def plot_cmaps(names=[], reverse=False, width=256, height=32, fig=1, figsize=Non
         plt.savefig(fullname, dpi=None, bbox_inches='tight')
     if fig==0: plt.close(fig)
 
-def test_cmaps(names=[], reverse=False, figsize=None, dir=".", fname="testcmap"):
-    """ Displays dummy 2D data with all the colour maps listed by name (in the local cache CMAP) """
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+def test_cmaps(data=[], names=[], reverse=False, nsteps=None, figsize=None, titlesize=12, dir=".", fname="testcmap"):
+    """ Displays dummy 2D data with all the colour maps listed by name """
+    if len(data)==0: data = mock_data(f_x=-1, phi_x=0.5, f_y=1, phi_y=0)
     if len(names)==0: names = list_all(reverse=reverse)
-    x = np.arange(0, np.pi, 0.01)
-    y = np.arange(0, np.pi, 0.01)
-    X,Y = np.meshgrid(x,y)
-    #Z = np.sin(X)*np.sin(Y)
-    Z = np.sin(-2*X)*np.sin(Y)
-    Z = (Z - Z.min()) / (Z.max() - Z.min())
     for i in range(len(names)):
-        cmap = CMAP[names[i]]
+        cmap = get_cmap(names[i], nsteps)
+        if cmap==None: continue
         plt.close(i+1)
-        plt.figure(i+1,figsize=figsize)
-        #fig, ax = plt.subplots(num=i+1, nrows=1)
-        #fig.subplots_adjust(top=0.95, bottom=0, left=0, right=1)
-        plt.imshow(Z, aspect='equal', interpolation='nearest', cmap=cmap)
-        plt.title(names[i])
-        plt.colorbar()
-        #ax = plt.gca()
-        #ax.set_axis_off()
+        fig = plt.figure(i+1,figsize=figsize)
+        im = plt.imshow(data, aspect='equal', interpolation='nearest', cmap=cmap)
+        plt.title(names[i], fontsize=titlesize)
         plt.xticks([])
         plt.yticks([])
-        fig = plt.gcf()
-        fig.subplots_adjust(top=0.95, bottom=0, left=0, right=1)
+        #plt.colorbar()
+        #using an axis divider so that the colour bar always be of the same height as the plot
+        cax = make_axes_locatable(plt.gca()).append_axes("right",size="5%",pad=0.25)
+        cbar = plt.colorbar(im, cax=cax)
+        #fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
         if fname != "":
             fullname = '%s/%s_%s.png'%(dir,fname,names[i])
             print 'writing ',fullname
             plt.savefig(fullname, dpi=None, bbox_inches='tight')
+
+def mock_data(f_x, phi_x, f_y, phi_y, res=100):
+    """ Generates a 2D periodic pattern """
+    x = np.arange(0, 1, 1./res)
+    y = np.arange(0, 1, 1./res)
+    X,Y = np.meshgrid(x,y)
+    Z = np.sin((f_x*X+phi_x)*np.pi)*np.sin((f_y*Y+phi_y)*np.pi)
+    Z = (Z - Z.min()) / (Z.max() - Z.min())
+    return Z
 
 def list_all(reverse=False):
     """ Lists names of all the colour maps present in CMAP """
