@@ -10,8 +10,12 @@ import sys
 import numpy as np
 import pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
-import colour  # http://colour-science.org
-colour.utilities.filter_warnings()
+try:
+    import colour  # http://colour-science.org
+    colour.utilities.filter_warnings()
+except:
+    #print "colour-science package not found"
+    pass
 from scipy.spatial import Delaunay
 
 import os
@@ -281,4 +285,4 @@ def plot_triangulation(space,kind='cmp',figsize=None):
     ax.plot_trisurf(points[:,0], points[:,1], points[:,2], triangles=tri.simplices)
 
 
-get_limits_ref()
+if hasattr(sys.modules[__name__],'colour'): get_limits_ref()
