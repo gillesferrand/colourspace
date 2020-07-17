@@ -18,6 +18,7 @@ Matplotlib cmaps can be plotted and written to disk (as png files of normalized 
 and can be tested on dummy data with test_cmaps()
 """
 
+from __future__ import print_function
 import os
 import numpy as np
 import pylab as plt
@@ -42,12 +43,12 @@ def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, 
     """ Draws a line at constant L in the LH plane, in the chosen H range, at the Cmax for this L
         (if sym==True then Cmax is set for all hues, otherwise for each hue independently)
     """
-    #print "drawing path at L = %3i for H = %3i – %3i with the Cmax for this L"%(L,H[0],H[1])
+    #print("drawing path at L = %3i for H = %3i – %3i with the Cmax for this L"%(L,H[0],H[1]))
     if H[0] <= H[1]:
-        H_range = np.linspace(H[0],H[1],(H[1]-H[0])*Hres+1)
+        H_range = np.linspace(H[0],H[1],int((H[1]-H[0])*Hres+1))
     else:
-        H_range1 = np.linspace(H[0],360 ,(360 -H[0])*Hres+1)
-        H_range2 = np.linspace(0   ,H[1],(H[1]-0   )*Hres+1)
+        H_range1 = np.linspace(H[0],360 ,int((360 -H[0])*Hres+1))
+        H_range2 = np.linspace(0   ,H[1],int((H[1]-0   )*Hres+1))
         H_range = np.concatenate((H_range1, H_range2))
     Cmax = {}
     RGB = {}
@@ -70,10 +71,10 @@ def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True,
         Cmax1 = Cmax_for_LH[mode](L,H1) # the Cmax for H1
         Cmax2 = Cmax_for_LH[mode](L,H2) # the Cmax for H2
         Cmax12 = np.minimum(Cmax1, Cmax2) # the Cmax that accomodates both hues
-        #print "L = ",L," : Cmax1 = ",Cmax1,", Cmax2 =",Cmax2
-        C_range1  = np.linspace(0, Cmax1 , Cmax1 *Cres+1)
-        C_range2  = np.linspace(0, Cmax2 , Cmax2 *Cres+1)
-        C_range12 = np.linspace(0, Cmax12, Cmax12*Cres+1)
+        #print("L = ",L," : Cmax1 = ",Cmax1,", Cmax2 =",Cmax2)
+        C_range1  = np.linspace(0, Cmax1 , int(Cmax1 *Cres+1))
+        C_range2  = np.linspace(0, Cmax2 , int(Cmax2 *Cres+1))
+        C_range12 = np.linspace(0, Cmax12, int(Cmax12*Cres+1))
         if sym:
             RGB12 = convert.clip3(convert.LCH2RGB(L,C_range12,H1)) # H1 side, restricted to Cmax(H2)
             RGB21 = convert.clip3(convert.LCH2RGB(L,C_range12,H2)) # H2 side, restricted to Cmax(H1)
@@ -93,7 +94,7 @@ def make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, modes=['clip','cr
     if len(L)==0: return
     if len(L)==1: L=[L[0],L[0]]
     L_range = np.linspace(L[0],L[1],int(abs(L[1]-L[0])*Lres)+1)
-    C_range = np.linspace(0, 1, Csteps+1) # normalized to Cmax for this L
+    C_range = np.linspace(0, 1, int(Csteps+1)) # normalized to Cmax for this L
     LL, CC_ = np.meshgrid(L_range,C_range,indexing='ij')
     RGB = {}
     for mode in modes:
@@ -124,14 +125,14 @@ def make_cmap_monohue(H=0, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, t
         (if sym==True then Cmax is set for both L and 100-L, otherwise for each L independently)
     """
     if len(L)<2: return
-    L_range = np.linspace(L[0],L[1],abs(L[1]-L[0])*Lres+1)
+    L_range = np.linspace(L[0],L[1],int(abs(L[1]-L[0])*Lres+1))
     Cmax = {}
     RGB = {}
     for mode in modes:
         if sym: Cmax_func = lambda l: np.minimum(Cmax_for_LH[mode](l,H), Cmax_for_LH[mode](100-l,H)) # the Cmax for (L,H) and (100-L,H)
         else:   Cmax_func = lambda l: Cmax_for_LH[mode](l,H)                                         # the Cmax for (L,H)
         #Cmax[mode] = Cmax_func(L_range)
-        #print "drawing %s path from (%i, %i, %i) to (%i, %i, %i)"%(mode,L_range[0],Cmax[mode][0],H,L_range[-1],Cmax[mode][-1],H)
+        #print("drawing %s path from (%i, %i, %i) to (%i, %i, %i)"%(mode,L_range[0],Cmax[mode][0],H,L_range[-1],Cmax[mode][-1],H))
         RGB[mode] = convert.clip3(convert.LCH2RGB(L_range,Cmax_func(L_range),H))
         name = 'monohue_L%03i-%03i_H%03i_%s'%(L[0],L[1],hue(H),mode)
         generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
@@ -143,9 +144,9 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
     """ Generates and plots a selection of colour maps of different types (for mpl and as png) """
     global CMAP
     if 'equilum' in types:
-        print "-------"
-        print "equilum"
-        print "-------"
+        print("-------")
+        print("equilum")
+        print("-------")
         for mode in modes:
             CMAP = {}
             if 'png' in targets:
@@ -156,9 +157,9 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_equilum(L=L, H=[0,250], Hres=2, modes=[mode], targets=['mpl'])
                 if plot: plot_cmaps(title="equilum_%s colour maps"%mode, fig=0, dir=dir)
     if 'diverging' in types:
-        print "---------"
-        print "diverging"
-        print "---------"
+        print("---------")
+        print("diverging")
+        print("---------")
         for mode in modes:
             CMAP = {}
             if 'png' in targets:
@@ -170,9 +171,9 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], targets=['mpl'])
                 if plot: plot_cmaps(title="diverging_%s colour maps"%mode, fig=0, dir=dir)
     if 'monohue' in types:
-        print "-------"
-        print "monohue"
-        print "-------"
+        print("-------")
+        print("monohue")
+        print("-------")
         for mode in modes:
             CMAP = {}
             if 'png' in targets:
@@ -200,13 +201,13 @@ def generate_cmaps(RGB_list, name, targets, png_height=32, png_prefix="cmap", pn
             fname = png_dir+"/"+png_prefix+"_"+name+".png"
             write_RGB_as_PNG(RGB_array, fname)
         if target == 'mpl':
-            print "creating cmap '%s' for Matplotlib (%4i steps)"%(name,len(RGB_list))
+            print("creating cmap '%s' for Matplotlib (%4i steps)"%(name,len(RGB_list)))
             CMAP[name     ] = matplotlib.colors.ListedColormap(RGB_list      , name)
             CMAP[name+'_r'] = matplotlib.colors.ListedColormap(RGB_list[::-1], name)
 
 def write_RGB_as_PNG(arr, fname):
     """ writes a RGB array as a PNG file, at its intrinsic size """
-    print 'writing %s (%ix%i)'%(fname,arr.shape[0],arr.shape[1])
+    print('writing %s (%ix%i)'%(fname,arr.shape[0],arr.shape[1]))
     plt.imsave(arr=arr, fname=fname, origin='lower')
 
 def register_to_mpl(names, reversed=True):
@@ -226,9 +227,9 @@ def get_cmap(name, nsteps=None):
     elif name in matplotlib.cm.cmap_d.keys():
         cmap = matplotlib.cm.cmap_d[name]
     else:
-        print "Unknown cmap: ",name
+        print("Unknown cmap: ",name)
         cmap = None
-    if cmap != None and nsteps>0: cmap = cmap._resample(nsteps)
+    if cmap != None and nsteps != None and nsteps>0: cmap = cmap._resample(nsteps)
     return cmap
 
 def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
@@ -259,7 +260,7 @@ def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1
     if title!="": top -= titlesize/fig_h
     fig.subplots_adjust(left=left, right=right, bottom=bottom, top=top, wspace=wspace, hspace=hspace)
     fig.suptitle(title, fontsize=titlesize)
-    gradient = np.linspace(0, 1, width)
+    gradient = np.linspace(0, 1, int(width))
     for ax, name in zip(axes, names):
         cmap = get_cmap(name, nsteps)
         if cmap!=None:
@@ -280,11 +281,11 @@ def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1
             ax.xaxis.set_label_position("top")
         if fname != "" and cmap!=None:
             fullname = "%s/%s%i_%s.png"%(dir,fname,width,name)
-            print 'writing ',fullname
+            print('writing ',fullname)
             plt.imsave(arr=np.tile(gradient,(height,1)), origin='lower', fname=fullname, cmap=cmap)
     if fname_all != "":
         fullname = "%s/%s%s.png"%(dir,fname_all,"_"+title if title!="" else "")
-        print 'writing ',fullname
+        print('writing ',fullname)
         plt.savefig(fullname, dpi=None, bbox_inches='tight')
     if fig==0: plt.close(fig)
 
@@ -310,7 +311,7 @@ def test_cmaps(data=[], names=[], reverse=False, nsteps=None, figsize=None, titl
         #fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
         if fname != "":
             fullname = '%s/%s_%s.png'%(dir,fname,names[i])
-            print 'writing ',fullname
+            print('writing ',fullname)
             plt.savefig(fullname, dpi=None, bbox_inches='tight')
 
 def mock_data(f_x, phi_x, f_y, phi_y, res=100):
@@ -328,7 +329,7 @@ def list_all(reverse=False):
     for name in CMAP.keys():
         if name[-2:] != '_r' or reverse == True: names.append(name)
     names = sorted(names, key=rank_cmap)
-    print 'found cmaps: ',names
+    print('found cmaps: ',names)
     return names
 
 def rank_cmap(name):

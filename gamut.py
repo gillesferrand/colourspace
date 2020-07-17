@@ -3,6 +3,7 @@
 Limits of the full human gamut, or the sRGB gamut, in CIE LCH space: Cmax(L,H)
 """
 
+from __future__ import print_function
 import sys
 import numpy as np
 import pylab as plt
@@ -52,8 +53,8 @@ def find_Cmax_forward(res, gmt, save=False, plot=True, version='mapping'):
     if gmt=='full' and not 'XYZ' in limits.triangulation['cmp'].keys():
         limits.set_limits(l_step=10, l_min=360, l_max=780)
         limits.triangulate('XYZ')
-    L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
-    H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
+    L = np.linspace(L_min,L_max,int((L_max-L_min)*res+1))
+    H = np.linspace(H_min,H_max,int((H_max-H_min)*res+1))
     Cmax[res][gmt] = np.zeros((len(L),len(H)),dtype=np.float32)
     # version with loops
     if version == 'looping':
@@ -103,14 +104,14 @@ def find_edge_by_dichotomy(func, xmin, xmax, dx=1., iter_max=100):
     delta = dx
     while delta >= dx and i<iter_max:
         i += 1
-        #print "i = %4i: x = [%6.2f, %6.2f]: func(%6.2f) = %i"%(i,xleft,xright,xmid,func(xmid)),
+        #print("i = %4i: x = [%6.2f, %6.2f]: func(%6.2f) = %i"%(i,xleft,xright,xmid,func(xmid)),end='')
         if func(xmid): xleft  = xmid
         else:          xright = xmid
         xmid_old = xmid
         xmid = 0.5*(xleft+xright)
         delta = abs(xmid_old-xmid)
-        #print "-> x = [%6.2f, %6.2f], delta=%f"%(xleft,xright,delta)
-    if i >= iter_max: print "edge not found at precision ",dx,"in ",iter_max," iterations"
+        #print("-> x = [%6.2f, %6.2f], delta=%f"%(xleft,xright,delta))
+    if i >= iter_max: print("edge not found at precision ",dx,"in ",iter_max," iterations")
     return np.around(xmid,int(np.ceil(np.log10(1./dx))))
 
 #---------------------------
@@ -125,7 +126,7 @@ def get_RGB_faces(num=10):
     block = {}
     block['0'] = np.zeros(num**2)
     block['1'] = np.ones( num**2)
-    x = np.linspace(0,1,num)
+    x = np.linspace(0,1,int(num))
     X,Y = np.meshgrid(x,x)
     block['x'] = X.flatten()
     block['y'] = Y.flatten()
@@ -229,14 +230,14 @@ def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize
             cb.update_ticks()
             cb.set_label("Cmax")
         if dir != "" and 'on' in axes:
-            print "writing %s"%(fname+"_axon"+ext)
+            print("writing %s"%(fname+"_axon"+ext))
             plt.savefig(fname+"_axon"+ext, dpi=None, bbox_inches='tight')
     if dir != "" and 'off' in axes and array.shape[1] > 3:
-        print "writing %s"%(fname+"_axoff"+ext)
+        print("writing %s"%(fname+"_axoff"+ext))
         plt.imsave(arr=array, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, fname=fname+"_axoff"+ext)
         #plt.imsave(fname+"_axoff"+ext, plt.get_cmap(cmap)(norm(np.flipud(array))))
 
-def plot3D((R,G,B), angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
+def plot3D(RGB, angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
     """ Plots a set of (R,G,B) points in 3D
         (beware: mplot3d does not composite colours correctly, and cannot handle large sets)
     """
@@ -252,16 +253,14 @@ def plot3D((R,G,B), angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
     ax.view_init(angle[0],angle[1])
     #ax.grid(False)
     # plot
-    #R = RGB_list[:,0]
-    #G = RGB_list[:,1]
-    #B = RGB_list[:,2]
+    R,G,B = RGB
     RGB_list = np.stack((R,G,B),axis=-1)
-    print len(RGB_list)," points"
+    print(len(RGB_list)," points")
     ax.scatter(R,G,B,color=RGB_list,marker='o',depthshade=False)
     # save
     if dir != "":
         fname = "%s/%s_%s.png"%(dir,fname,space)
-        print "writing %s"%(fname)
+        print("writing %s"%(fname))
         plt.savefig(fname, dpi=None, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
@@ -273,14 +272,14 @@ def save_Cmax_npy(res, gmt, dir=this_dir):
     """ Saves a gamut as a numpy binary file """
     global Cmax
     fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gmt)
-    print "saving gamut to %s"%fname
+    print("saving gamut to %s"%fname)
     np.save(fname, Cmax[res][gmt])
 
 def load_Cmax_npy(res, gmt, dir=this_dir):
     """ Loads a gamut from a numpy binary file """
     global Cmax
     fname = '%s/Cmax_res%.0f_%s.npy'%(dir,res,gmt)
-    print "loading gamut from %s"%fname
+    print("loading gamut from %s"%fname)
     if res not in Cmax.keys(): Cmax[res] = {}
     Cmax[res][gmt] = np.load(fname)
 
@@ -289,9 +288,9 @@ def save_Cmax_txt(res, gmt, dir=this_dir):
     global Cmax
     fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gmt)
     file = open(fname, 'w')
-    print "saving gamut to %s"%fname
-    L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
-    H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
+    print("saving gamut to %s"%fname)
+    L = np.linspace(L_min,L_max,int((L_max-L_min)*res+1))
+    H = np.linspace(H_min,H_max,int((H_max-H_min)*res+1))
     digits = np.ceil(np.log10(res))
     format = "%%%i.%if"%(4+digits,digits)
     formats = format+"\t"+format+"\t"+format+"\n"
@@ -306,9 +305,9 @@ def load_Cmax_txt(res, gmt, dir=this_dir):
     Cmax[res] = {}
     fname = '%s/Cmax_res%.0f_%s.txt'%(dir,res,gmt)
     file = open(fname, 'r')
-    print "loading gamut from %s"%fname
-    L = np.linspace(L_min,L_max,(L_max-L_min)*res+1)
-    H = np.linspace(H_min,H_max,(H_max-H_min)*res+1)
+    print("loading gamut from %s"%fname)
+    L = np.linspace(L_min,L_max,int((L_max-L_min)*res+1))
+    H = np.linspace(H_min,H_max,int((H_max-H_min)*res+1))
     Cmax[res][gmt] = np.zeros((len(L),len(H)),dtype=np.float32)
     for i in range(len(L)):
         for k in range(len(H)):
@@ -326,7 +325,7 @@ def set_Cmax(res,gmt):
     try:
         load_Cmax_npy(res,gmt)
     except:
-        print "couldn't load gamut '%s' at res=%f, computing it"%(gmt,res)
+        print("couldn't load gamut '%s' at res=%f, computing it"%(gmt,res))
         find_Cmax_forward(res, gmt)
 
 def Cmax_for_LH(L,H,res=1,gmt='full'):

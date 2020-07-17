@@ -13,6 +13,7 @@ for mode='clip' the colour is faked: the R,G,B values are clipped to [0,1]
 When a colour is outside the human gamut: it is replaced with black
 """
 
+from __future__ import print_function
 import sys
 import os
 import numpy as np
@@ -242,9 +243,9 @@ def make_figure(showfig,dir,name,ext,arr,extent,xlabel,ylabel,xticks,yticks,mode
             if xticks is not None: plt.xticks(xticks)
             if yticks is not None: plt.yticks(yticks)
             if dir != "" and 'on' in axes:
-                print "writing %s"%(fname+"_axon_"+ext+".png")
+                print("writing %s"%(fname+"_axon_"+ext+".png"))
                 plt.savefig(fname+"_axon_"+ext+".png", dpi=None, bbox_inches='tight')
                 if not showfig: plt.close(figname)
         if dir != "" and 'off' in axes:
-            print "writing %s"%(fname+"_axoff_"+ext+".png")
+            print("writing %s"%(fname+"_axoff_"+ext+".png"))
             plt.imsave(arr=arr[mode],origin='lower',fname=fname+"_axoff_"+ext+".png")

@@ -6,6 +6,7 @@ Relies on the colour-science package for computing a colour from a spectral dist
 Relies on the scipy.spatial package for triangulating the boundary
 """
 
+from __future__ import print_function
 import sys
 import numpy as np
 import pylab as plt
@@ -14,7 +15,7 @@ try:
     import colour  # http://colour-science.org
     colour.utilities.filter_warnings()
 except:
-    #print "colour-science package not found"
+    #print("colour-science package not found")
     pass
 from scipy.spatial import Delaunay
 
@@ -92,7 +93,7 @@ def print_range(kind='cmp',space=''):
     """ Prints the range of each coordinate """
     if kind not in limits.keys() or space not in limits[kind].keys() or len(limits[kind][space]) == 0: return
     for dim in range(3):
-        print space[dim]," = ",limits[kind][space][:,dim].min()," – ",limits[kind][space][:,dim].max()
+        print(space[dim]," = ",limits[kind][space][:,dim].min()," – ",limits[kind][space][:,dim].max())
 
 def get_extremum(kind='cmp'):
     """ Gets the LCH value of the colour of highest C"""
@@ -113,18 +114,18 @@ def save_limits(dir=this_dir):
     l_max  = limits_domain['l_max']
     l_step = limits_domain['l_step']
     fname = '%s/limits_%i-%i-%i_%s.npy'%(dir,l_min,l_max,l_step,space)
-    print "saving limits to %s"%fname,
+    print("saving limits to %s"%fname,end='')
     np.save(fname, limits['cmp'][space])
-    print ": %i points"%(len(limits['cmp'][space]))
+    print(": %i points"%(len(limits['cmp'][space])))
 
 def load_limits(l_step, l_min=360, l_max=780, dir=this_dir):
     """ Loads the list of optimal colours from a numpy binary file """
     global limits, limits_domain
     space = 'XYZ'
     fname = '%s/limits_%i-%i-%i_%s.npy'%(dir,l_min,l_max,l_step,space)
-    print "loading limits from %s"%fname,
+    print("loading limits from %s"%fname,end='')
     limits['cmp'][space] = np.load(fname)
-    print ": %i points"%(len(limits['cmp'][space]))
+    print(": %i points"%(len(limits['cmp'][space])))
     limits_domain['l_min' ] = l_min
     limits_domain['l_max' ] = l_max
     limits_domain['l_step'] = l_step
@@ -164,7 +165,7 @@ def plot_limits3D(kind='cmp', space='XYZ', over=False, angle=(None,None), fig=0,
     else:
         ax = plt.gca()
     # plot
-    print len(points)," points"
+    print(len(points)," points")
     x = points[:,index[space][0]]
     y = points[:,index[space][1]]
     z = points[:,index[space][2]]
@@ -174,7 +175,7 @@ def plot_limits3D(kind='cmp', space='XYZ', over=False, angle=(None,None), fig=0,
     # save
     if dir != "":
         fname = "%s/%s_%s.png"%(dir,fname,space)
-        print "writing %s"%(fname)
+        print("writing %s"%(fname))
         plt.savefig(fname, dpi=None, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
@@ -198,7 +199,7 @@ def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None
         ax = plt.gca()
     # plot
     indices = np.intersect1d(np.where(ranges[dim][0]<=points[:,dim]),np.where(points[:,dim]<=ranges[dim][1]))
-    print len(points[indices])," points"
+    print(len(points[indices])," points")
     x = points[indices,(dim+1)%3]
     y = points[indices,(dim+2)%3]
     colours = 'black' if over else np.clip(limits[kind]['RGB'][indices,:],0,1)
@@ -209,7 +210,7 @@ def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None
     # save
     if dir != "":
         fname = "%s/%s_%s_%s=%03i-%03i.png"%(dir,fname,space,space[dim],ranges[dim][0],ranges[dim][1])
-        print "writing %s"%(fname)
+        print("writing %s"%(fname))
         plt.savefig(fname, dpi=None, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
@@ -250,7 +251,7 @@ def set_limits(l_step=1, l_min=360, l_max=780):
     try:
         load_limits(l_step, l_min, l_max, dir=this_dir)
     except:
-        print "couldn't load limits, computing them"
+        print("couldn't load limits, computing them")
         find_limits(l_step, l_min, l_max, dir=this_dir)
 
 triangulation = {'ref': {}, 'cmp': {}}
