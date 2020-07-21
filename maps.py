@@ -147,8 +147,8 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
         print("-------")
         print("equilum")
         print("-------")
+        CMAP = {}
         for mode in modes:
-            CMAP = {}
             if 'png' in targets:
                 for L in np.arange(20,90,10):
                     make_cmap_equilum(L=L, H=[0,250], Hres=1, modes=[mode], targets=['png'], png_dir=dir)
@@ -160,8 +160,8 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
         print("---------")
         print("diverging")
         print("---------")
+        CMAP = {}
         for mode in modes:
-            CMAP = {}
             if 'png' in targets:
                 for L in np.arange(20,90,10):
                     make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=1, modes=[mode], targets=['png'], png_dir=dir)
@@ -174,15 +174,15 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
         print("-------")
         print("monohue")
         print("-------")
+        CMAP = {}
         for mode in modes:
-            CMAP = {}
             if 'png' in targets:
-                for H in [40, 140, 290]:
+                for H in 40 + 60*np.arange(6):
                     make_cmap_monohue(H=H, L=[  0, 50], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
                     make_cmap_monohue(H=H, L=[100, 50], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
                     make_cmap_monohue(H=H, L=[0  ,100], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
             if 'mpl' in targets:
-                for H in [40, 140, 290]:
+                for H in 40 + 60*np.arange(6):
                     make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
                     make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
                     make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=False, modes=[mode], targets=['mpl'])
@@ -196,8 +196,7 @@ def generate_cmaps(RGB_list, name, targets, png_height=32, png_prefix="cmap", pn
     for target in targets:
         if target == 'png':
             if not os.path.exists(png_dir): os.makedirs(png_dir)
-            RGB_array = np.zeros((png_height,len(RGB_list),3))
-            for n in range(len(RGB_list)): RGB_array[:,n,0:3] = RGB_list[n]
+            RGB_array = np.tile(RGB_list, (png_height,1,1))
             fname = png_dir+"/"+png_prefix+"_"+name+".png"
             write_RGB_as_PNG(RGB_array, fname)
         if target == 'mpl':
@@ -232,13 +231,13 @@ def get_cmap(name, nsteps=None):
     if cmap != None and nsteps != None and nsteps>0: cmap = cmap._resample(nsteps)
     return cmap
 
-def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
+def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
     """ Plots all colour maps listed by name
         If `fname` is set writes them individually as PNG images of size `width` by `height`
         If `fname_all` is set writes the figure with all of them as a PNG image
     """
     # adapted from http://matplotlib.org/examples/color/colormaps_reference.html
-    if len(names)==0: names = list_all(reverse=reverse)
+    if len(names)==0: names = list_all(filters=filters, reverse=reverse)
     nrows = len(names)
     if nrows == 0: return
     plt.close(fig)
@@ -291,10 +290,10 @@ def plot_cmaps(names=[], reverse=False, nsteps=None, width=256, height=32, fig=1
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def test_cmaps(data=[], names=[], reverse=False, nsteps=None, figsize=None, titlesize=12, dir=".", fname="testcmap"):
+def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, figsize=None, titlesize=12, dir=".", fname="testcmap"):
     """ Displays dummy 2D data with all the colour maps listed by name """
     if len(data)==0: data = mock_data(f_x=-1, phi_x=0.5, f_y=1, phi_y=0)
-    if len(names)==0: names = list_all(reverse=reverse)
+    if len(names)==0: names = list_all(filters=filters, reverse=reverse)
     for i in range(len(names)):
         cmap = get_cmap(names[i], nsteps)
         if cmap==None: continue
@@ -323,11 +322,12 @@ def mock_data(f_x, phi_x, f_y, phi_y, res=100):
     Z = (Z - Z.min()) / (Z.max() - Z.min())
     return Z
 
-def list_all(reverse=False):
+def list_all(filters=[], reverse=False):
     """ Lists names of all the colour maps present in CMAP """
     names = []
     for name in CMAP.keys():
-        if name[-2:] != '_r' or reverse == True: names.append(name)
+        if all(x in name for x in filters):
+            if name[-2:] != '_r' or reverse == True: names.append(name)
     names = sorted(names, key=rank_cmap)
     print('found cmaps: ',names)
     return names
