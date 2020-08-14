@@ -87,7 +87,7 @@ def Lab2XYZ(Lab):
     return (X,Y,Z)
 
 def f_forward(x):
-    return np.where(x > (6/29)**3, x**(1/3.), 1/3.*(29/6.)**2*x+4/29.)
+    return np.where(x > (6/29.)**3, x**(1/3.), 1/3.*(29/6.)**2*x+4/29.)
 
 def f_reverse(x):
     return np.where(x > 6/29., x**3, 3*(6/29.)**2*(x-4/29.))
