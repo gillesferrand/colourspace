@@ -11,31 +11,51 @@ from __future__ import print_function
 import numpy as np
 
 convertor = None
+illuminant = None
 LCH2RGB = lambda L,C,H: [np.nan, np.nan, np.nan]
 RGB2LCH = lambda R,G,B: [np.nan, np.nan, np.nan]
 
-def set_convertor(name):
-    """ Binds conversion function LCH2RGB to the choosen package
-        NB: all assume standard D65 illuminant
+def set_convertor(name, ill='D65'):
+    """ Binds the conversion functions LCH2RGB() and RGB2LCH() to the choosen colour package
     """
-    global LCH2RGB, RGB2LCH, convertor
+    global LCH2RGB, RGB2LCH, convertor, illuminant
     if name not in ['custom', 'colorspacious', 'colourscience']:
         print("Unknown conversion module")
         return
     convertor = name
+    illuminant = ill
     if name=='custom':
         LCH2RGB = lambda L,C,H: XYZ2RGB(Lab2XYZ(LCH2Lab((L,C,H))))
         RGB2LCH = lambda R,G,B: Lab2LCH(XYZ2Lab(RGB2XYZ((R,G,B))))
     if name=='colorspacious':
         from colorspacious import cspace_convert
-        LCH2RGB = lambda L,C,H: cspace_convert(cspace_convert([L,C,H], "CIELCh", "XYZ100"), "XYZ100", "sRGB1")
-        RGB2LCH = lambda R,G,B: cspace_convert(cspace_convert([R,G,B], "sRGB1", "XYZ100"), "XYZ100", "CIELCh")
+        func_LCH2RGB = lambda L,C,H: cspace_convert([L,C,H], {"name": "CIELCh", "XYZ100_w": ill}, "sRGB1")
+        func_RGB2LCH = lambda R,G,B: cspace_convert([R,G,B], "sRGB1", {"name": "CIELCh", "XYZ100_w": ill})
     if name=='colourscience':
-        import colour as colourscience
-        illuminant = colourscience.ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-        LCH2RGB = lambda L,C,H: colourscience.XYZ_to_sRGB(colourscience.Lab_to_XYZ(colourscience.LCHab_to_Lab([L,C,H]), illuminant=illuminant))
-        RGB2LCH = lambda R,G,B: colourscience.Lab_to_LCHab(colourscience.XYZ_to_Lab(colourscience.sRGB_to_XYZ([R,G,B]), illuminant=illuminant))
-    print("convertor = '",name,"'")
+        import colour as cs
+        cs_ill = cs.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][ill]
+        func_LCH2RGB = lambda L,C,H: cs.XYZ_to_sRGB(cs.Lab_to_XYZ(cs.LCHab_to_Lab([L,C,H]), illuminant=cs_ill))
+        func_RGB2LCH = lambda R,G,B: cs.Lab_to_LCHab(cs.XYZ_to_Lab(cs.sRGB_to_XYZ([R,G,B]), illuminant=cs_ill))
+    if name=='colorspacious' or name=='colourscience':
+        def LCH2RGB(L,C,H):
+            if hasattr(L, '__iter__'):
+                RGB = np.array(list(map(func_LCH2RGB,L,C,H)))
+                R = RGB[:,0]
+                G = RGB[:,1]
+                B = RGB[:,2]
+            else:
+                R,G,B = func_LCH2RGB(L,C,H)
+            return R, G, B
+        def RGB2LCH(R,G,B):
+            if hasattr(R, '__iter__'):
+                LCH = np.array(list(map(func_RGB2LCH,R,G,B)))
+                L = LCH[:,0]
+                C = LCH[:,1]
+                H = LCH[:,2]
+            else:
+                L,C,H = func_RGB2LCH(R,G,B)
+            return L, C, H
+    print("convertor = '%s' (illuminant = '%s')"%(name,illuminant))
 
 set_convertor('custom')
 
@@ -43,18 +63,18 @@ set_convertor('custom')
 
 def LCH2Lab(LCH):
     L,C,H = LCH
-    #L = float(L)
+    #L = np.float(L)
     a = C * np.cos(H*2*np.pi/360.)
     b = C * np.sin(H*2*np.pi/360.)
     return (L, a, b)
 
 def Lab2LCH(Lab):
     L,a,b = Lab
-    #L = float(L)
+    #L = np.float(L)
     C = np.sqrt(a**2+b**2)
     H = np.arctan2(b,a) * 360/(2*np.pi)
     H = np.where(H<0, H+360, H)
-    return (L, C, H)
+    return (L, C, H+0.)
 
 # perceptual CIE XYZ <-> uniform CIE Lab
 
@@ -70,7 +90,6 @@ Zn['D65'] = 108.883
 Xn['D50'] =  96.422
 Yn['D50'] = 100.000
 Zn['D50'] =  82.521
-illuminant = 'D65'
 
 def XYZ2Lab(XYZ):
     X,Y,Z = XYZ
@@ -116,7 +135,6 @@ def gamma_forward(Cln):
     g[ mask] = 12.92*Cln[mask]
     g[~mask] = 1.055*(Cln[~mask]**(1/2.4))-0.055
     return g
-    #return np.where(Cln <= 0.0031308, 12.92*Cln, 1.055*(Cln**(1/2.4))-0.055)
 
 def gamma_reverse(Cnl):
     mask = Cnl <= 0.04045
@@ -124,7 +142,6 @@ def gamma_reverse(Cnl):
     g[ mask] = Cnl[mask]/12.92
     g[~mask] = ((Cnl[~mask]+0.055)/1.055)**2.4
     return g
-    #return np.where(Cnl <= 0.04045, Cnl/12.92, ((Cnl+0.055)/1.055)**2.4)
 
 # RGB gamut check
 
