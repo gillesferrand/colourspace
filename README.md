@@ -11,15 +11,17 @@ The pre-computed limits at resolutions of 1, 5, 10, 20 nm are included as Numpy 
 
 **slices** provides functions to draw slices in the colour space: L-H planes as a function of C (or for the maximum possible C), C-H planes as a function of L, and L-C planes as a function of H.
 
-**maps** provides functions to generate colour maps for Matplotlib, and/or written as png images. Three kinds of palettes are implemented, which separate the different perceptual dimensions: equi-luminant (varying only in H, at the max C), diverging (varying only in C between two hues H1 and H2), and mono-hue (varying only in L, at the maximum C).
+**maps** provides functions to generate colour maps for Matplotlib, and/or written as png images. Three kinds of cmaps are implemented, which separate the different perceptual dimensions: equi-luminant (varying only in H, at the max C), diverging (varying only in C between two hues H1 and H2), and mono-hue (varying only in L, at the maximum C). It includes utility functions for testing a cmap on mock data, and for displaying the path taken by a cmap in the colour space.
 
 The package comes with five notebooks, which demonstrate the use of the five scripts.  
-Static renderings of the notebooks can also be seen on [nbviewer](https://nbviewer.jupyter.org):  
+Static renderings of the notebooks can also be seen [on nbviewer](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/tree/master/):  
 [1. Conversions between colour spaces](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/1.%20convert.ipynb)  
 [2. Mapping the sRGB gamut](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/2.%20sRGB%20gamut.ipynb)  
 [3. Mapping the human gamut](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/3.%20full%20gamut.ipynb)  
 [4. Slicing the LCH space](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/4.%20slices.ipynb)  
 [5. Making custom colour maps](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/5.%20cmaps.ipynb)  
+Additional case study:
+[5.1 Helix colour scheme](https://nbviewer.jupyter.org/github/gillesferrand/colourspace/blob/master/5.1%20cmaps%20helix.ipynb)
 
 ---
 This package is provided "as is", with no warranty of any kind.  

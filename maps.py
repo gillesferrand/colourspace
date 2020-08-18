@@ -37,6 +37,10 @@ Cmax_for_LH['clip'] = lambda l,h: gamut.Cmax_for_LH(l,h,res=res_gamut,gmt="full"
 def hue(H):
     return H if 0 <= H <= 360 else H%360
 
+#--------------
+# sample cmaps
+#--------------
+
 # equilum
 
 def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, targets=['mpl','png'], png_dir=".", out=False):
@@ -72,8 +76,8 @@ def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True,
         Cmax2 = Cmax_for_LH[mode](L,H2) # the Cmax for H2
         Cmax12 = np.minimum(Cmax1, Cmax2) # the Cmax that accomodates both hues
         #print("L = ",L," : Cmax1 = ",Cmax1,", Cmax2 =",Cmax2)
-        C_range1  = np.linspace(0, Cmax1 , int(Cmax1 *Cres+1))
-        C_range2  = np.linspace(0, Cmax2 , int(Cmax2 *Cres+1))
+        C_range1  = np.linspace(0, Cmax1 , int(Cmax12*Cres+1))
+        C_range2  = np.linspace(0, Cmax2 , int(Cmax12*Cres+1))
         C_range12 = np.linspace(0, Cmax12, int(Cmax12*Cres+1))
         if sym:
             RGB12 = convert.clip3(convert.LCH2RGB(L,C_range12,H1)) # H1 side, restricted to Cmax(H2)
@@ -160,38 +164,46 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
         print("---------")
         print("diverging")
         print("---------")
+        sym = True
         CMAP = {}
         for mode in modes:
             if 'png' in targets:
                 for L in np.arange(20,90,10):
-                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=1, modes=[mode], targets=['png'], png_dir=dir)
-                make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, Csteps=128, modes=[mode], png_dir=dir)
+                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=1, modes=[mode], sym=sym, targets=['png'], png_dir=dir)
+                make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, Csteps=128, modes=[mode], sym=sym, png_dir=dir)
             if 'mpl' in targets:
                 for L in np.arange(20,90,10):
-                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], targets=['mpl'])
+                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], sym=sym, targets=['mpl'])
                 if plot: plot_cmaps(title="diverging_%s colour maps"%mode, fig=0, dir=dir)
     if 'monohue' in types:
         print("-------")
         print("monohue")
         print("-------")
+        sym = True
         CMAP = {}
         for mode in modes:
             if 'png' in targets:
                 for H in 40 + 60*np.arange(6):
-                    make_cmap_monohue(H=H, L=[  0, 50], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
-                    make_cmap_monohue(H=H, L=[100, 50], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
-                    make_cmap_monohue(H=H, L=[0  ,100], Lres=1 , sym=False, modes=[mode], targets=['png'], png_dir=dir)
+                    make_cmap_monohue(H=H, L=[  0, 50], Lres=1 , sym=sym, modes=[mode], targets=['png'], png_dir=dir)
+                    make_cmap_monohue(H=H, L=[100, 50], Lres=1 , sym=sym, modes=[mode], targets=['png'], png_dir=dir)
+                    make_cmap_monohue(H=H, L=[0  ,100], Lres=1 , sym=sym, modes=[mode], targets=['png'], png_dir=dir)
             if 'mpl' in targets:
                 for H in 40 + 60*np.arange(6):
-                    make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
-                    make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=False, modes=[mode], targets=['mpl'])
-                    make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=False, modes=[mode], targets=['mpl'])
+                    make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'])
+                    make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'])
+                    make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=sym, modes=[mode], targets=['mpl'])
                 if plot: plot_cmaps(title="monohue_%s colour maps"%mode, fig=0, dir=dir)
 
+#-----------------
+# cmap generation
+#-----------------
 
-# generate colour maps for Matplotlib, or as PNG
+def make_cmap_path(L,C,H, name="custom", targets=['mpl'], png_dir="."):
+    """ Makes a cmap from an arbitrary path in LCH space, defined by the sets of L, C, H values along the path """
+    RGB = convert.clip3(convert.LCH2RGB(L,C,H))
+    generate_cmaps(RGB, name, targets, png_dir)
 
-def generate_cmaps(RGB_list, name, targets, png_height=32, png_prefix="cmap", png_dir="."):
+def generate_cmaps(RGB_list, name, targets=['mpl'], png_height=32, png_prefix="cmap", png_dir="."):
     """ Generates colour maps from a 1D array of RGB triplets, for the specified targets (Matplotlib or PNG) """
     for target in targets:
         if target == 'png':
@@ -215,7 +227,9 @@ def register_to_mpl(names, reversed=True):
         matplotlib.cm.register_cmap(cmap=CMAP[name], name=name)
         if reversed: matplotlib.cm.register_cmap(cmap=CMAP[name+'_r'], name=name+'_r')
 
-# plotting
+#---------------
+# cmap plotting
+#---------------
 
 def get_cmap(name, nsteps=None):
     """ Returns a named colour map, looking first in the local cache CMAP, then in Matplotlib's registered colours
@@ -292,10 +306,11 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, figsize=None, titlesize=12, dir=".", fname="testcmap"):
     """ Displays dummy 2D data with all the colour maps listed by name """
-    if len(data)==0: data = mock_data(f_x=-1, phi_x=0.5, f_y=1, phi_y=0)
+    if len(data)==0: data = mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0)
     if len(names)==0: names = list_all(filters=filters, reverse=reverse)
+    if nsteps==None: nsteps = [None]*len(names)
     for i in range(len(names)):
-        cmap = get_cmap(names[i], nsteps)
+        cmap = get_cmap(names[i], nsteps[i])
         if cmap==None: continue
         plt.close(i+1)
         fig = plt.figure(i+1,figsize=figsize)
@@ -338,3 +353,142 @@ def rank_cmap(name):
     pos = name.find("_L")
     if pos>0: name = name.replace(name[pos:pos+2+3],"_L%03i"%(100-int(name[pos+2:pos+2+3])))
     return name
+
+#-------------
+# cmap curves
+#-------------
+
+def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', axes=[], figsize=(4,), stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None, cmap_size="0%", cmap_pad=0.3):
+        """ Plots the path of a Matplotlib `cmap` in the three dimensions of the colour space
+            Extracts the curves R,G,B or L,C,H according to `space', then calls plot_3curves(curves,`space`,`stack`)
+            Optionally adds an image of the cmap itself as the abscissa
+        """
+        if isinstance(cmap, str): cmap = get_cmap(cmap, nsteps=nsteps)
+        # get the curves
+        if hasattr(cmap,'colors'): # ListedColormap
+            RGB = np.array(cmap.colors)
+        else: # LinearSegmentedColormap
+            RGB = cmap(np.linspace(0,1,100))
+        R = RGB[:,0]
+        G = RGB[:,1]
+        B = RGB[:,2]
+        if space == 'RGB':
+            curves = (R, G, B)
+        if space == 'LCH':
+            curves = convert.RGB2LCH(R,G,B)
+        # plot the curves
+        axes = plot_3curves(curves, colours=colours, widths=widths, styles=styles, markers=markers, Cmax_ls=Cmax_ls, axes=axes, figsize=figsize, stack=stack, Z_axes=Z_axes, Z_margin=Z_margin, space=space, xlim=xlim, ylim=ylim, xticks=xticks, yticks=yticks, title=title, legend_label=legend_label, legend_axis=legend_axis, legend_loc=legend_loc)
+        # add the cmap itself
+        if cmap_size != "0%":
+            for i in range(3):
+                cax = make_axes_locatable(axes[i]).append_axes("bottom",size=cmap_size,pad=cmap_pad)
+                gradient = np.linspace(0, 1, 256)
+                cax.imshow(np.tile(gradient,(2,1)), aspect='auto', interpolation='nearest', cmap=cmap)
+                cax.set_xticks([])
+                cax.set_yticks([])
+                for axis in ['top','bottom','left','right']: cax.spines[axis].set_linewidth(0.)
+        # save to file
+        if fname != "":
+            fullname = '%s/%s.png'%(dir,fname)
+            print('writing ',fullname)
+            plt.savefig(fullname, dpi=None, bbox_inches='tight')
+        return axes
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+def plot_3curves(curves, colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', axes=[], figsize=(4,), stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None):
+    """ Plots the three given 1D arrays `curves`
+        The figure is prepared by calling setfig_3curves(`space`,`stack`)
+        If `Cmax_ls` is set, the sRGB gamut is overplotted on the C plot with this linestyle
+    """
+    # checks
+    if len(curves)!=3:
+        print("You must provide 3 arrays")
+        return
+    n = []
+    for i in range(3): n.append(len(curves[i]))
+    if n[0] != n[1] or n[1] != n[2]:
+        print("The 3 arrays must be of the same size")
+        return
+    # styling
+    label_colours = ['k']*3 if len(colours)>0 else []
+    default_colours = {'RGB': ['r','g','b'], 'LCH': ['darkgoldenrod','darkcyan','darkmagenta']}
+    if len(colours)==0: colours = default_colours[space]
+    if len(colours)==1: colours *= 3
+    if len(widths )==0: widths  = [1.5]*3
+    if len(widths )==1: widths  *= 3
+    if len(styles )==0: styles  = ['-']*3
+    if len(styles )==1: styles  *= 3
+    if len(markers)==0: markers = ['']*3
+    if len(markers)==1: markers *= 3
+    if len(label_colours)==0: label_colours = colours
+    # axes
+    if len(axes)==0: axes = setfig_3curves(figsize=figsize, stack=stack, Z_axes=Z_axes, Z_margin=Z_margin, space=space, label_colours=label_colours, xlim=xlim, ylim=ylim, xticks=xticks, yticks=yticks, title=title)
+    # plot
+    x = np.linspace(0,1,n[0])
+    for i in range(3):
+        axes[i].plot(x, curves[i], c=colours[i], lw=widths[i], ls=styles[i], marker=markers[i], label=legend_label)
+    # legend
+    if legend_label != "":
+        axes[legend_axis].legend(loc=legend_loc, shadow=False)
+    # gamut
+    if space == 'LCH' and Cmax_ls != '':
+        Cmax = Cmax_for_LH['crop'](curves[0][:],curves[2][:])
+        axes[1].plot(x, Cmax, c=colours[1], lw=widths[1], ls=Cmax_ls)
+    return axes
+
+import copy
+
+def setfig_3curves(figsize=None, stack='Z', Z_axes='left', Z_margin=0, space='LCH', label_colours=[], xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title=""):
+    """ Sets up the figure with three plots
+        `stack` = 'V' vertical | 'H' horizontal | 'Z' depth (for the latter, axes are on the `Z_axes` side)
+        `space` = 'RGB' | 'LCH'
+    """
+    # axes
+    if stack == 'V': rows = 3; cols = 1
+    if stack == 'H': rows = 1; cols = 3
+    if stack == 'Z': rows = 1; cols = 1
+    if figsize!=None and len(figsize)==1: figsize = (cols*figsize[0], rows*figsize[0])
+    fig, axes = plt.subplots(rows, cols, figsize=figsize)#, constrained_layout=True)
+    if stack == 'Z':
+        delta = {'left': lambda i: 0-(2-i)*0.2, 'right': lambda i: 1+i*0.2}
+        axes_root = axes
+        axes = []
+        for i in range(3):
+            axes.append(axes_root.twinx())
+            axes[i].spines[Z_axes].set_position(("axes",delta[Z_axes](i)))
+            axes[i].spines[Z_axes].set_visible(True)
+            axes[i].yaxis.set_label_position(Z_axes)
+            axes[i].yaxis.set_ticks_position(Z_axes)
+        axes_root.yaxis.set_visible(False)
+        if Z_margin>0 and Z_axes=='left' : plt.subplots_adjust(left =  Z_margin)
+        if Z_margin>0 and Z_axes=='right': plt.subplots_adjust(right=1-Z_margin)
+    # ticks
+    default_yticks = {'RGB': [0.2, 0.2, 0.2], 'LCH': [10., 20., 60.]}
+    if yticks == None: yticks = [None]
+    if len(yticks)==1: yticks = yticks*3
+    for i in range(3):
+        locator = matplotlib.ticker.MultipleLocator(base=xticks)
+        axes[i].xaxis.set_major_locator(locator)
+        if yticks[i] == None: yticks[i] = default_yticks[space][i]
+        locator = matplotlib.ticker.MultipleLocator(base=yticks[i])
+        axes[i].yaxis.set_major_locator(locator)
+    # labels
+    if len(label_colours)==0: label_colours = ['k']*3
+    if stack == 'V' or stack == 'Z':
+        for i in range(3): axes[i].set_ylabel(" "+space[i]+" ", rotation=0, fontsize=12, color=label_colours[i])
+        axes[0].set_title(title)
+    if stack == 'H':
+        for i in range(3): axes[i].set_title(space[i], fontsize=12, color=label_colours[i])
+        axes[0].set_ylabel(title)
+    # ranges
+    for i in range(3):
+        axes[i].set_xlim(xlim)
+    default_ylim_max = {'RGB': [1, 1, 1], 'LCH': [100, 100, 360]}
+    if ylim == None: ylim = [0,None]
+    if len(ylim)==2: ylim = [copy.deepcopy(ylim), copy.deepcopy(ylim), copy.deepcopy(ylim)] #*3
+    for i in range(3):
+        if ylim[i][1] == None: ylim[i][1] = default_ylim_max[space][i]
+        axes[i].set_ylim(ylim[i])
+    if stack == 'H' or stack == 'V': plt.tight_layout()
+    return axes
