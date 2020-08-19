@@ -223,6 +223,8 @@ def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize
         else:
             # array is a 2D map
             plt.imshow(array, origin='lower', extent=[H_min, H_max, L_min, L_max], aspect=aspect, interpolation='nearest', cmap=cmap, norm=norm)
+        locator = ticker.MultipleLocator(60)
+        plt.gca().xaxis.set_major_locator(locator)
         if cbar>0:
             cax = make_axes_locatable(plt.gca()).append_axes("right", size="%.f%%"%cbar, pad=0.10)
             cb = plt.colorbar(plt.gci(), cax=cax)
