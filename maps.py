@@ -23,10 +23,15 @@ import os
 import numpy as np
 import pylab as plt
 import matplotlib
+try:
+    import pyx
+except:
+    pass
 from . import convert
 from . import gamut
 
-CMAP = {}
+CMAP = {}     # cache for Matplotlib cmaps
+CMAP_PyX = {} # cache for PyX cmaps
 
 # wrappers for the gamut functions at the chosen resolution
 res_gamut = 10
@@ -204,17 +209,28 @@ def make_cmap_path(L,C,H, name="custom", targets=['mpl'], png_dir="."):
     generate_cmaps(RGB, name, targets, png_dir)
 
 def generate_cmaps(RGB_list, name, targets=['mpl'], png_height=32, png_prefix="cmap", png_dir="."):
-    """ Generates colour maps from a 1D array of RGB triplets, for the specified targets (Matplotlib or PNG) """
+    """ Generates colour maps from a 1D array of RGB triplets, for the specified targets:
+        PNG (written to disk), Matplotlib (cached in CMAP), or PyX (cached in CMAP_PyX) """
     for target in targets:
         if target == 'png':
             if not os.path.exists(png_dir): os.makedirs(png_dir)
             RGB_array = np.tile(RGB_list, (png_height,1,1))
             fname = png_dir+"/"+png_prefix+"_"+name+".png"
             write_RGB_as_PNG(RGB_array, fname)
-        if target == 'mpl':
+        if target.lower() == 'mpl':
             print("creating cmap '%s' for Matplotlib (%4i steps)"%(name,len(RGB_list)))
             CMAP[name     ] = matplotlib.colors.ListedColormap(RGB_list      , name)
             CMAP[name+'_r'] = matplotlib.colors.ListedColormap(RGB_list[::-1], name)
+        if target.lower() == 'pyx':
+            print("creating cmap '%s' for PyX (%4i steps)"%(name,len(RGB_list)))
+            def make_function(RGB_list,i):
+                return lambda x: RGB_list[int(np.floor(x*(len(RGB_list)-1)))][i]
+            CMAP_PyX[name     ] = pyx.color.functiongradient({'r':make_function(RGB_list,0),
+                                                              'g':make_function(RGB_list,1),
+                                                              'b':make_function(RGB_list,2)}, pyx.color.rgb)
+            CMAP_PyX[name+'_r'] = pyx.color.functiongradient({'r':make_function(RGB_list[::-1],0),
+                                                              'g':make_function(RGB_list[::-1],1),
+                                                              'b':make_function(RGB_list[::-1],2)}, pyx.color.rgb)
 
 def write_RGB_as_PNG(arr, fname):
     """ writes a RGB array as a PNG file, at its intrinsic size """
