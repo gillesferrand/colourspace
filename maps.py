@@ -199,14 +199,65 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=sym, modes=[mode], targets=['mpl'])
                 if plot: plot_cmaps(title="monohue_%s colour maps"%mode, fig=0, dir=dir)
 
+#---------------
+# generic cmaps
+#---------------
+
+def make_cmap_segmented(LCH_x, LCH_y, name="segmented", modes=['clip','crop'], targets=['mpl','png'], png_dir=".", out=False):
+    """ Makes a cmap from paths linear by part in L, C, H coordinates
+        LCH_x[X] is an array of input values in [0,1]
+        LCH_y[X] is an array of output values in the range of coord X
+        for X = L,C,H
+        (y values can be discontinuous at a point x, given by a pair [V1,V2])
+    """
+    # checks
+    for coord in ['L','C','H']:
+        if len(LCH_x[coord])<2 \
+        or LCH_x[coord][0] != 0 or LCH_x[coord][-1] != 1 \
+        or (len(LCH_x[coord])>2 and (np.array(LCH_x[coord][1:-1])-np.array(LCH_x[coord][0:-2])).min() < 0):
+            print("Invalid range for %s: must be monotonous from 0 to 1"%coord)
+            return None
+        if len(LCH_x[coord]) != len(LCH_y[coord]):
+            print("The x and y arrays must be of the same length")
+            return None
+    # draw paths
+    LCH_range = {}
+    get_value = lambda value, side: value[side] if type(value)==list else value
+    for coord in ['L','C','H']:
+        coord_range = np.array([])
+        for i in range(len(LCH_x[coord])-1):
+            n_points = int((LCH_x[coord][i+1]-LCH_x[coord][i]) * 1024)
+            segment = np.linspace(get_value(LCH_y[coord][i],1), get_value(LCH_y[coord][i+1],0), n_points)
+            coord_range = np.concatenate((coord_range, segment))
+        LCH_range[coord] = coord_range
+    # Note: the position of the boundaries is only controlled +/- 1
+    # but such shifts are negligible as long as the total number of points is large enough
+    n = min([len(LCH_range['L']),len(LCH_range['C']),len(LCH_range['H'])])
+    L_range = LCH_range['L'][0:n]
+    C_range = LCH_range['C'][0:n]
+    H_range = LCH_range['H'][0:n]
+    # make cmap
+    Cmax = {}
+    RGB = {}
+    for mode in modes:
+        Cmax[mode] = Cmax_for_LH[mode](L_range,H_range) # the Cmax for each (L,H) pair
+        RGB[mode] = convert.clip3(convert.LCH2RGB(L_range,np.minimum(C_range,Cmax[mode]),H_range))
+        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, png_dir=png_dir)
+    if out: return RGB
+
+def make_cmap_path(L,C,H, name="custom", modes=['clip','crop'], targets=['mpl','png'], png_dir=".", out=False):
+    """ Makes a cmap from an arbitrary path in LCH space, defined by the sets of L, C, H values along the path """
+    Cmax = {}
+    RGB = {}
+    for mode in modes:
+        Cmax[mode] = Cmax_for_LH[mode](L,H) # the Cmax for each (L,H) pair
+        RGB[mode] = convert.clip3(convert.LCH2RGB(L,np.minimum(C,Cmax[mode]),H))
+        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, png_dir=png_dir)
+    if out: return RGB
+
 #-----------------
 # cmap generation
 #-----------------
-
-def make_cmap_path(L,C,H, name="custom", targets=['mpl'], png_dir="."):
-    """ Makes a cmap from an arbitrary path in LCH space, defined by the sets of L, C, H values along the path """
-    RGB = convert.clip3(convert.LCH2RGB(L,C,H))
-    generate_cmaps(RGB, name, targets, png_dir)
 
 def generate_cmaps(RGB_list, name, targets=['mpl'], png_height=32, png_prefix="cmap", png_dir="."):
     """ Generates colour maps from a 1D array of RGB triplets, for the specified targets:
