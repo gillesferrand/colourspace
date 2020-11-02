@@ -48,7 +48,7 @@ def hue(H):
 
 # equilum
 
-def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, targets=['mpl','png'], mpl_reg=False, png_dir=".", out=False):
     """ Draws a line at constant L in the LH plane, in the chosen H range, at the Cmax for this L
         (if sym==True then Cmax is set for all hues, otherwise for each hue independently)
     """
@@ -66,12 +66,12 @@ def make_cmap_equilum(L=70, H=[0,250], Hres=1, modes=['clip','crop'], sym=True, 
         if sym: Cmax[mode] = Cmax[mode].min() # the Cmax for all hues
         RGB [mode] = convert.clip3(convert.LCH2RGB(L,Cmax[mode],H_range))
         name = 'equilum_L%03i_H%03i-%03i_%s'%(L,hue(H[0]),hue(H[1]),mode)
-        generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
+        generate_cmaps(RGB[mode], name, targets, mpl_reg=mpl_reg, png_dir=png_dir)
     if out: return RGB
 
 # diverging
 
-def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True, Cres=1, targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True, Cres=1, targets=['mpl','png'], mpl_reg=False, png_dir=".", out=False):
     """ For a given L, draws a path from H1 at max chroma to H2 at max chroma
         (if sym==True then Cmax is set for both hues, otherwise for each hue independently)
     """
@@ -93,7 +93,7 @@ def make_cmap_diverging(H1=30+180, H2=30, L=50, modes=['clip','crop'], sym=True,
             RGB2  = convert.clip3(convert.LCH2RGB(L,C_range2 ,H2)) # H2 side, full range
             RGB[mode] = np.concatenate((RGB1 [::-1], RGB2 [1:]))
         name = 'diverging_L%03i_H%03i-%03i_%s'%(L,hue(H1),hue(H2),mode)
-        generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
+        generate_cmaps(RGB[mode], name, targets, mpl_reg=mpl_reg, png_dir=png_dir)
     if out: return RGB
 
 def make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, modes=['clip','crop'], sym=True, Csteps=128, png_dir=".", png_prefix="cmap", out=False):
@@ -129,7 +129,7 @@ def make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, modes=['clip','cr
 
 # monohue
 
-def make_cmap_monohue(H=0, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_monohue(H=0, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, targets=['mpl','png'], mpl_reg=False, png_dir=".", out=False):
     """ For a given H, draws a path from L[0] to L[1] at the maximal C
         (if sym==True then Cmax is set for both L and 100-L, otherwise for each L independently)
     """
@@ -144,12 +144,12 @@ def make_cmap_monohue(H=0, L=[0,50], Lres=1, modes=['clip','crop'], sym=False, t
         #print("drawing %s path from (%i, %i, %i) to (%i, %i, %i)"%(mode,L_range[0],Cmax[mode][0],H,L_range[-1],Cmax[mode][-1],H))
         RGB[mode] = convert.clip3(convert.LCH2RGB(L_range,Cmax_func(L_range),H))
         name = 'monohue_L%03i-%03i_H%03i_%s'%(L[0],L[1],hue(H),mode)
-        generate_cmaps(RGB[mode], name, targets, png_dir=png_dir)
+        generate_cmaps(RGB[mode], name, targets, mpl_reg=mpl_reg, png_dir=png_dir)
     if out: return RGB
 
 # selection
 
-def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'], targets=['mpl','png'], dir='.', plot=True):
+def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'], targets=['mpl','png'], mpl_reg=False, dir='.', plot=True):
     """ Generates and plots a selection of colour maps of different types (for mpl and as png) """
     global CMAP
     if 'equilum' in types:
@@ -163,7 +163,7 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_equilum(L=L, H=[0,250], Hres=1, modes=[mode], targets=['png'], png_dir=dir)
             if 'mpl' in targets:
                 for L in np.arange(20,90,10):
-                    make_cmap_equilum(L=L, H=[0,250], Hres=2, modes=[mode], targets=['mpl'])
+                    make_cmap_equilum(L=L, H=[0,250], Hres=2, modes=[mode], targets=['mpl'], mpl_reg=mpl_reg)
                 if plot: plot_cmaps(title="equilum_%s colour maps"%mode, fig=0, dir=dir)
     if 'diverging' in types:
         print("---------")
@@ -178,7 +178,7 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                 make_cmap_diverging2D(H1=30+180, H2=30, L=[0,100], Lres=1, Csteps=128, modes=[mode], sym=sym, png_dir=dir)
             if 'mpl' in targets:
                 for L in np.arange(20,90,10):
-                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], sym=sym, targets=['mpl'])
+                    make_cmap_diverging(H1=30+180, H2=30, L=L, Cres=4, modes=[mode], sym=sym, targets=['mpl'], mpl_reg=mpl_reg)
                 if plot: plot_cmaps(title="diverging_%s colour maps"%mode, fig=0, dir=dir)
     if 'monohue' in types:
         print("-------")
@@ -194,16 +194,16 @@ def make_cmap_favs(types=['equilum','diverging','monohue'], modes=['clip','crop'
                     make_cmap_monohue(H=H, L=[0  ,100], Lres=1 , sym=sym, modes=[mode], targets=['png'], png_dir=dir)
             if 'mpl' in targets:
                 for H in 40 + 60*np.arange(6):
-                    make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'])
-                    make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'])
-                    make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=sym, modes=[mode], targets=['mpl'])
+                    make_cmap_monohue(H=H, L=[  0, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'], mpl_reg=mpl_reg)
+                    make_cmap_monohue(H=H, L=[100, 50], Lres=10, sym=sym, modes=[mode], targets=['mpl'], mpl_reg=mpl_reg)
+                    make_cmap_monohue(H=H, L=[0  ,100], Lres= 5, sym=sym, modes=[mode], targets=['mpl'], mpl_reg=mpl_reg)
                 if plot: plot_cmaps(title="monohue_%s colour maps"%mode, fig=0, dir=dir)
 
 #---------------
 # generic cmaps
 #---------------
 
-def make_cmap_segmented(LCH_x, LCH_y, name="segmented", modes=['clip','crop'], targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_segmented(LCH_x, LCH_y, name="segmented", modes=['clip','crop'], targets=['mpl','png'], mpl_reg=False, png_dir=".", out=False):
     """ Makes a cmap from paths linear by part in L, C, H coordinates
         LCH_x[X] is an array of input values in [0,1]
         LCH_y[X] is an array of output values in the range of coord X
@@ -242,24 +242,24 @@ def make_cmap_segmented(LCH_x, LCH_y, name="segmented", modes=['clip','crop'], t
     for mode in modes:
         Cmax[mode] = Cmax_for_LH[mode](L_range,H_range) # the Cmax for each (L,H) pair
         RGB[mode] = convert.clip3(convert.LCH2RGB(L_range,np.minimum(C_range,Cmax[mode]),H_range))
-        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, png_dir=png_dir)
+        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, mpl_reg=mpl_reg, png_dir=png_dir)
     if out: return RGB
 
-def make_cmap_path(L,C,H, name="custom", modes=['clip','crop'], targets=['mpl','png'], png_dir=".", out=False):
+def make_cmap_path(L,C,H, name="custom", modes=['clip','crop'], targets=['mpl','png'], mpl_reg=False, png_dir=".", out=False):
     """ Makes a cmap from an arbitrary path in LCH space, defined by the sets of L, C, H values along the path """
     Cmax = {}
     RGB = {}
     for mode in modes:
         Cmax[mode] = Cmax_for_LH[mode](L,H) # the Cmax for each (L,H) pair
         RGB[mode] = convert.clip3(convert.LCH2RGB(L,np.minimum(C,Cmax[mode]),H))
-        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, png_dir=png_dir)
+        generate_cmaps(RGB[mode], name+"_"+mode if len(modes)>1 else name, targets, mpl_reg=mpl_reg, png_dir=png_dir)
     if out: return RGB
 
 #-----------------
 # cmap generation
 #-----------------
 
-def generate_cmaps(RGB_list, name, targets=['mpl'], png_height=32, png_prefix="cmap", png_dir="."):
+def generate_cmaps(RGB_list, name, targets=['mpl'], mpl_rev=True, mpl_reg=False, png_height=32, png_prefix="cmap", png_dir="."):
     """ Generates colour maps from a 1D array of RGB triplets, for the specified targets:
         PNG (written to disk), Matplotlib (cached in CMAP), or PyX (cached in CMAP_PyX) """
     for target in targets:
@@ -270,8 +270,9 @@ def generate_cmaps(RGB_list, name, targets=['mpl'], png_height=32, png_prefix="c
             write_RGB_as_PNG(RGB_array, fname)
         if target.lower() == 'mpl':
             print("creating cmap '%s' for Matplotlib (%4i steps)"%(name,len(RGB_list)))
-            CMAP[name     ] = matplotlib.colors.ListedColormap(RGB_list      , name)
-            CMAP[name+'_r'] = matplotlib.colors.ListedColormap(RGB_list[::-1], name)
+            CMAP[name] = matplotlib.colors.ListedColormap(RGB_list, name)
+            if mpl_rev: CMAP[name+'_r'] = matplotlib.colors.ListedColormap(RGB_list[::-1], name)
+            if mpl_reg: register_to_mpl([name], mpl_rev)
         if target.lower() == 'pyx':
             print("creating cmap '%s' for PyX (%4i steps)"%(name,len(RGB_list)))
             def make_function(RGB_list,i):
@@ -289,7 +290,7 @@ def write_RGB_as_PNG(arr, fname):
     plt.imsave(arr=arr, fname=fname, origin='lower')
 
 def register_to_mpl(names, reversed=True):
-    """ Adds a cmap to Matplotlib's list """
+    """ Adds a cmap to Matplotlib's internal list """
     for name in names:
         matplotlib.cm.register_cmap(cmap=CMAP[name], name=name)
         if reversed: matplotlib.cm.register_cmap(cmap=CMAP[name+'_r'], name=name+'_r')
