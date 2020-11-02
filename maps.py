@@ -371,16 +371,21 @@ def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, heig
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, figsize=None, titlesize=12, dir=".", fname="testcmap"):
+def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, subplots=(), figsize=None, titlesize=12, dir=".", fname="testcmap"):
     """ Displays dummy 2D data with all the colour maps listed by name """
-    if len(data)==0: data = mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0)
+    if len(data)==0: data = mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0, min=0, max=1)
     if len(names)==0: names = list_all(filters=filters, reverse=reverse)
     if nsteps==None: nsteps = [None]*len(names)
+    if len(names)!=len(nsteps): print("You must define nstep for each cmap")
+    if subplots: fig, axes = plt.subplots(subplots[0], subplots[1], figsize=figsize)
     for i in range(len(names)):
         cmap = get_cmap(names[i], nsteps[i])
         if cmap==None: continue
-        plt.close(i+1)
-        fig = plt.figure(i+1,figsize=figsize)
+        if subplots:
+            plt.axes(axes[i])
+        else:
+            plt.close(i+1)
+            fig = plt.figure(i+1,figsize=figsize)
         im = plt.imshow(data, aspect='equal', interpolation='nearest', cmap=cmap)
         plt.title(names[i], fontsize=titlesize)
         plt.xticks([])
@@ -391,17 +396,19 @@ def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, figsiz
         cbar = plt.colorbar(im, cax=cax)
         #fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
         if fname != "":
-            fullname = '%s/%s_%s.png'%(dir,fname,names[i])
-            print('writing ',fullname)
-            plt.savefig(fullname, dpi=None, bbox_inches='tight')
+            if not subplots or i==len(names):
+                fullname = '%s/%s_%s.png'%(dir,fname,names[i])
+                print('writing ',fullname)
+                plt.savefig(fullname, dpi=None, bbox_inches='tight')
 
-def mock_data(f_x, phi_x, f_y, phi_y, res=100):
-    """ Generates a 2D periodic pattern """
+def mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0, min=0, max=1, res=100):
+    """ Generates a 2D periodic pattern (f=frequency, phi=phase), rescaled to [min,max] """
     x = np.arange(0, 1, 1./res)
     y = np.arange(0, 1, 1./res)
     X,Y = np.meshgrid(x,y)
     Z = np.sin((f_x*X+phi_x)*np.pi)*np.sin((f_y*Y+phi_y)*np.pi)
     Z = (Z - Z.min()) / (Z.max() - Z.min())
+    Z = min + Z * (max-min)
     return Z
 
 def list_all(filters=[], reverse=False):
