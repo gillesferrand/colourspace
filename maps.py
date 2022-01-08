@@ -292,6 +292,7 @@ def write_RGB_as_PNG(arr, fname):
 def register_to_mpl(names, reversed=True):
     """ Adds a cmap to Matplotlib's internal list """
     for name in names:
+        print("registering cmap '%s' to Matplotlib"%(name))
         matplotlib.cm.register_cmap(cmap=CMAP[name], name=name)
         if reversed: matplotlib.cm.register_cmap(cmap=CMAP[name+'_r'], name=name+'_r')
 
@@ -305,15 +306,16 @@ def get_cmap(name, nsteps=None):
     """
     if name in CMAP.keys():
         cmap = CMAP[name]
-    elif name in matplotlib.cm.cmap_d.keys():
-        cmap = matplotlib.cm.cmap_d[name]
     else:
-        print("Unknown cmap: ",name)
-        cmap = None
+        try:
+            cmap = matplotlib.cm.get_cmap(name)
+        except:
+            print("Unknown cmap: ",name)
+            cmap = None
     if cmap != None and nsteps != None and nsteps>0: cmap = cmap._resample(nsteps)
     return cmap
 
-def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
+def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, dpi=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):
     """ Plots all colour maps listed by name
         If `fname` is set writes them individually as PNG images of size `width` by `height`
         If `fname_all` is set writes the figure with all of them as a PNG image
@@ -367,42 +369,41 @@ def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, heig
     if fname_all != "":
         fullname = "%s/%s%s.png"%(dir,fname_all,"_"+title if title!="" else "")
         print('writing ',fullname)
-        plt.savefig(fullname, dpi=None, bbox_inches='tight')
+        plt.savefig(fullname, dpi=dpi, bbox_inches='tight')
     if fig==0: plt.close(fig)
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def test_cmaps(data=[], names=[], filters=[], reverse=False, nsteps=None, subplots=(), figsize=None, titlesize=12, dir=".", fname="testcmap"):
+def test_cmaps(data=[], names=[], titles=[], filters=[], reverse=False, nsteps=None, subplots=(1,1), figsize=None, dpi=None, titlesize=12, dir=".", fname="testcmap"):
     """ Displays dummy 2D data with all the colour maps listed by name """
     if len(data)==0: data = mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0, min=0, max=1)
     if len(names)==0: names = list_all(filters=filters, reverse=reverse)
+    if len(titles)==0: titles = [""]*len(names)
     if nsteps==None: nsteps = [None]*len(names)
-    if len(names)!=len(nsteps): print("You must define nstep for each cmap")
-    if subplots: fig, axes = plt.subplots(subplots[0], subplots[1], figsize=figsize)
+    if len(titles)!=len(names): print("You must define title for each cmap")
+    if len(nsteps)!=len(names): print("You must define nstep for each cmap")
+    fig, axes = plt.subplots(subplots[0], subplots[1], figsize=figsize)
     for i in range(len(names)):
         cmap = get_cmap(names[i], nsteps[i])
         if cmap==None: continue
-        if subplots:
-            plt.axes(axes[i])
-        else:
-            plt.close(i+1)
-            fig = plt.figure(i+1,figsize=figsize)
+        if subplots[0]*subplots[1]>1: plt.axes(axes[i])
+        else: plt.axes(axes)
         im = plt.imshow(data, aspect='equal', interpolation='nearest', cmap=cmap)
-        plt.title(names[i], fontsize=titlesize)
+        title_i = names[i] if titles[i]=='' else titles[i]
+        plt.title(title_i, fontsize=titlesize)
         plt.xticks([])
         plt.yticks([])
-        #plt.colorbar()
         #using an axis divider so that the colour bar always be of the same height as the plot
         cax = make_axes_locatable(plt.gca()).append_axes("right",size="5%",pad=0.25)
         cbar = plt.colorbar(im, cax=cax)
-        #fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
-        if fname != "":
-            if not subplots or i==len(names):
-                fullname = '%s/%s_%s.png'%(dir,fname,names[i])
-                print('writing ',fullname)
-                plt.savefig(fullname, dpi=None, bbox_inches='tight')
+        if fname != "" and i==len(names)-1:
+            fullname = '%s/%s'%(dir,fname)
+            if len(names)==1: fullname += '_%s'%(names[i])
+            fullname += '.png'
+            print('writing ',fullname)
+            plt.savefig(fullname, dpi=dpi, bbox_inches='tight')
 
-def mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0, min=0, max=1, res=100):
+def mock_data(f_x=1, phi_x=-0.5, f_y=1, phi_y=0, min=0, max=1, res=300):
     """ Generates a 2D periodic pattern (f=frequency, phi=phase), rescaled to [min,max] """
     x = np.arange(0, 1, 1./res)
     y = np.arange(0, 1, 1./res)
@@ -433,7 +434,7 @@ def rank_cmap(name):
 # cmap curves
 #-------------
 
-def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', axes=[], figsize=(4,), stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None, cmap_size="0%", cmap_pad=0.3):
+def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', axes=[], figsize=(4,), dpi=None, stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None, cmap_size="0%", cmap_pad=0.3):
         """ Plots the path of a Matplotlib `cmap` in the three dimensions of the colour space
             Extracts the curves R,G,B or L,C,H according to `space', then calls plot_3curves(curves,`space`,`stack`)
             Optionally adds an image of the cmap itself as the abscissa
@@ -451,6 +452,13 @@ def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], style
             curves = (R, G, B)
         if space == 'LCH':
             curves = convert.RGB2LCH(R,G,B)
+            # patch H where C=0
+            tol = 0.01
+            where_C_zero = np.where(curves[1]<=tol)[0]
+            for i in where_C_zero:
+                iL = i-1 if (i>0 and curves[1][i-1]>tol) else i
+                iR = i+1 if (i+1<len(curves[2]) and curves[1][i+1]>tol) else i
+                curves[2][i] = 0.5*(curves[2][iL]+curves[2][iR])
         # plot the curves
         axes = plot_3curves(curves, colours=colours, widths=widths, styles=styles, markers=markers, Cmax_ls=Cmax_ls, axes=axes, figsize=figsize, stack=stack, Z_axes=Z_axes, Z_margin=Z_margin, space=space, xlim=xlim, ylim=ylim, xticks=xticks, yticks=yticks, title=title, legend_label=legend_label, legend_axis=legend_axis, legend_loc=legend_loc)
         # add the cmap itself
@@ -466,7 +474,7 @@ def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], style
         if fname != "":
             fullname = '%s/%s.png'%(dir,fname)
             print('writing ',fullname)
-            plt.savefig(fullname, dpi=None, bbox_inches='tight')
+            plt.savefig(fullname, dpi=dpi, bbox_inches='tight')
         return axes
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
