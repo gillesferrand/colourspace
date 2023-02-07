@@ -434,7 +434,7 @@ def rank_cmap(name):
 # cmap curves
 #-------------
 
-def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', axes=[], figsize=(4,), dpi=None, stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None, cmap_size="0%", cmap_pad=0.3):
+def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], styles=[], markers=[], Cmax_ls=':', H_patch='cut', C_tol=0.01, axes=[], figsize=(4,), dpi=None, stack='Z', Z_axes='left', Z_margin=0, space='LCH', xlim=[0,1], ylim=None, xticks=0.25, yticks=None, title="", legend_label="", legend_axis=0, legend_loc=None, cmap_size="0%", cmap_pad=0.3):
         """ Plots the path of a Matplotlib `cmap` in the three dimensions of the colour space
             Extracts the curves R,G,B or L,C,H according to `space', then calls plot_3curves(curves,`space`,`stack`)
             Optionally adds an image of the cmap itself as the abscissa
@@ -452,13 +452,34 @@ def plot_path(cmap, nsteps=None, dir=".", fname="", colours=[], widths=[], style
             curves = (R, G, B)
         if space == 'LCH':
             curves = convert.RGB2LCH(R,G,B)
-            # patch H where C=0
-            tol = 0.01
-            where_C_zero = np.where(curves[1]<=tol)[0]
-            for i in where_C_zero:
-                iL = i-1 if (i>0 and curves[1][i-1]>tol) else i
-                iR = i+1 if (i+1<len(curves[2]) and curves[1][i+1]>tol) else i
-                curves[2][i] = 0.5*(curves[2][iL]+curves[2][iR])
+            # patch H where C=0 (really H is undefined)
+            where_C_zero = np.where(curves[1]<=C_tol)[0]
+            if H_patch == 'cut': 
+                curves[2][where_C_zero] = np.nan
+            if H_patch[:3] == 'int': 
+                if len(where_C_zero)>0 and len(where_C_zero)<len(curves[1]):
+                    where_C_zero_chunks = np.split(where_C_zero, np.where(where_C_zero[1:] != where_C_zero[:-1] + 1)[0] + 1)
+                    for j in range(len(where_C_zero_chunks)): 
+                        if where_C_zero_chunks[j][ 0]>0 and where_C_zero_chunks[j][-1]<len(curves[2])-1:
+                            iL = where_C_zero_chunks[j][ 0]-1
+                            iR = where_C_zero_chunks[j][-1]+1
+                        if where_C_zero_chunks[j][ 0]==0: 
+                            iL = len(curves[2])-1 if len(curves[2])-1 not in where_C_zero else where_C_zero_chunks[-1][ 0]-1
+                            iR = where_C_zero_chunks[j][-1]+1
+                        if where_C_zero_chunks[j][-1]==len(curves[2])-1:
+                            iL = where_C_zero_chunks[j][ 0]-1
+                            iR =  0 if 0 not in where_C_zero else where_C_zero_chunks[ 0][-1]+1
+                        #print(iL,"C = ",curves[2][iL])
+                        for i in where_C_zero_chunks[j]: 
+                            if where_C_zero_chunks[j][ 0]>0 and where_C_zero_chunks[j][-1]<len(curves[2])-1:
+                                frac = (i-iL)/(iR-iL)
+                            if where_C_zero_chunks[j][ 0]==0: 
+                                frac = (len(curves[2])-iL+i)/(len(curves[2])-iL+iR)
+                            if where_C_zero_chunks[j][-1]==len(curves[2])-1: 
+                                frac = (i+1-iL)/(len(curves[2])-iL+iR)
+                            #print(i,"C = ",curves[2][i]," -> ",curves[2][iL],"+",frac,"*",(curves[2][iR]-curves[2][iL])," = ",curves[2][iL]+frac*(curves[2][iR]-curves[2][iL]))
+                            curves[2][i] = curves[2][iL] + frac * (curves[2][iR]-curves[2][iL])
+                        #print(iR,"C = ",curves[2][iR])
         # plot the curves
         axes = plot_3curves(curves, colours=colours, widths=widths, styles=styles, markers=markers, Cmax_ls=Cmax_ls, axes=axes, figsize=figsize, stack=stack, Z_axes=Z_axes, Z_margin=Z_margin, space=space, xlim=xlim, ylim=ylim, xticks=xticks, yticks=yticks, title=title, legend_label=legend_label, legend_axis=legend_axis, legend_loc=legend_loc)
         # add the cmap itself
