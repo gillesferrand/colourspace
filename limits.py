@@ -142,7 +142,7 @@ index['Lab'] = [1, 2, 0]
 index['LCH'] = [1, 2, 0]
 index['RGB'] = [0, 1, 2]
 
-def plot_limits3D(kind='cmp', space='XYZ', over=False, angle=(None,None), fig=0, figsize=None, dir="", fname="limits3D"):
+def plot_limits3D(kind='cmp', space='XYZ', over=False, angle=(None,None), fig=0, figsize=None, dpi=None, dir="", fname="limits3D"):
     """ Plots the set of optimal colours
         (beware: mplot3d does not composite colours correctly, and cannot handle large sets)
     """
@@ -176,10 +176,10 @@ def plot_limits3D(kind='cmp', space='XYZ', over=False, angle=(None,None), fig=0,
     if dir != "":
         fname = "%s/%s_%s.png"%(dir,fname,space)
         print("writing %s"%(fname))
-        plt.savefig(fname, dpi=None, bbox_inches='tight')
+        plt.savefig(fname, dpi=dpi, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
-def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None,None], 2:[None,None]}, over=False, fig=0, figsize=None, dir="", fname="limits2D"):
+def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None,None], 2:[None,None]}, over=False, fig=0, figsize=None, dpi=None, dir="", fname="limits2D"):
     """ Plots the set of optimal colours in a bin along a given dimension """
     if kind not in limits.keys() or space not in limits[kind].keys() or len(limits[kind][space]) == 0: return
     points = limits[kind][space]
@@ -211,16 +211,16 @@ def plot_limits2D(kind='cmp', space='XYZ', dim=0, ranges={0:[None,None], 1:[None
     if dir != "":
         fname = "%s/%s_%s_%s=%03i-%03i.png"%(dir,fname,space,space[dim],ranges[dim][0],ranges[dim][1])
         print("writing %s"%(fname))
-        plt.savefig(fname, dpi=None, bbox_inches='tight')
+        plt.savefig(fname, dpi=dpi, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
-def plot_limits2D_bins(space='XYZ', dim=1, binning=10, ranges={0:[-10,110], 1:[0,100], 2:[-10,110]}, figsize=None, dir=this_dir, fname='limits2D'):
+def plot_limits2D_bins(space='XYZ', dim=1, binning=10, ranges={0:[-10,110], 1:[0,100], 2:[-10,110]}, figsize=None, dpi=None, dir=this_dir, fname='limits2D'):
     """ Plots the set of optimal colours in a set of bins along a given dimension """
     bins = np.linspace(ranges[dim][0],ranges[dim][1],int((ranges[dim][1]-ranges[dim][0])/(1.*binning)+1))
     for i in range(len(bins)-1):
         ranges_i = ranges
         ranges_i[dim] = [bins[i],bins[i+1]]
-        plot_limits2D(kind='cmp',space=space,dim=dim,ranges=ranges_i,figsize=figsize)
+        plot_limits2D(kind='cmp',space=space,dim=dim,ranges=ranges_i,figsize=figsize,dpi=dpi)
         plot_limits2D(kind='ref',space=space,dim=dim,ranges=ranges_i,over=True,fig=-1,dir=dir,fname=fname)
 
 def plot_Cmax(kind='cmp',figsize=None):

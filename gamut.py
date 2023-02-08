@@ -188,11 +188,11 @@ def get_extremum(res, gmt):
     H = H_min + iH/(nH-1.) * (H_max-H_min)
     return np.array((L,C,H))
 
-def plot_Cmax(res, gmt, vmax=200, fig=1, figsize=None, dir=this_dir, fname="Cmax", axes=['on','off']):
+def plot_Cmax(res, gmt, vmax=200, fig=1, figsize=None, dpi=None, dir=this_dir, fname="Cmax", axes=['on','off']):
     """ Plots Cmax(H,L) """
-    plot2D(Cmax[res][gmt], name=gmt, vmax=vmax, fname='%s_res%i_%s'%(fname,res,gmt), fig=fig, figsize=figsize, dir=dir, axes=axes)
+    plot2D(Cmax[res][gmt], name=gmt, vmax=vmax, fname='%s_res%i_%s'%(fname,res,gmt), fig=fig, figsize=figsize, dpi=dpi, dir=dir, axes=axes)
 
-def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize=None, aspect="equal", name="", fname="Cmax", dir=this_dir, axes=['on','off']):
+def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize=None, dpi=None, aspect="equal", name="", fname="Cmax", dir=this_dir, axes=['on','off']):
     """ Plots a surface represented explicitly by a 2D array XY or implicitly by a set of 3D points XYZ """
     cmap = "Greys_r"
     norm = plt.Normalize(vmin=vmin, vmax=vmax)
@@ -233,13 +233,13 @@ def plot2D(array, marker='', colour='', vmin=0, vmax=200, cbar=3, fig=1, figsize
             cb.set_label("Cmax")
         if dir != "" and 'on' in axes:
             print("writing %s"%(fname+"_axon"+ext))
-            plt.savefig(fname+"_axon"+ext, dpi=None, bbox_inches='tight')
+            plt.savefig(fname+"_axon"+ext, dpi=dpi, bbox_inches='tight')
     if dir != "" and 'off' in axes and array.shape[1] > 3:
         print("writing %s"%(fname+"_axoff"+ext))
-        plt.imsave(arr=array, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, fname=fname+"_axoff"+ext)
-        #plt.imsave(fname+"_axoff"+ext, plt.get_cmap(cmap)(norm(np.flipud(array))))
+        plt.imsave(arr=array, origin='lower', cmap=cmap, vmin=vmin, vmax=vmax, fname=fname+"_axoff"+ext, dpi=dpi if dpi!=None else 200)
+        #plt.imsave(fname+"_axoff"+ext, plt.get_cmap(cmap)(norm(np.flipud(array))), dpi=dpi if dpi!=None else 200)
 
-def plot3D(RGB, angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
+def plot3D(RGB, angle=(0,0), fig=0, figsize=None, dpi=None, dir="", fname="RGB"):
     """ Plots a set of (R,G,B) points in 3D
         (beware: mplot3d does not composite colours correctly, and cannot handle large sets)
     """
@@ -263,7 +263,7 @@ def plot3D(RGB, angle=(0,0), fig=0, figsize=None, dir="", fname="RGB"):
     if dir != "":
         fname = "%s/%s_%s.png"%(dir,fname,space)
         print("writing %s"%(fname))
-        plt.savefig(fname, dpi=None, bbox_inches='tight')
+        plt.savefig(fname, dpi=dpi, bbox_inches='tight')
     if fig<0: plt.close(fg)
 
 #-------------------------

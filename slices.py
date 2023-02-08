@@ -26,11 +26,11 @@ res_gamut = 1
 # LH(C)
 #-------
 
-def LH_planes(C=np.arange(0,201,1),L=[0,100],H=[0,360],res=1,showfig=False,dir="LHplanes",name="LHplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def LH_planes(C=np.arange(0,201,1),L=[0,100],H=[0,360],res=1,showfig=False,dir="LHplanes",name="LHplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates the LH plane for a range of C """
-    for Cj in C: LH = LH_plane(Cj,L=L,H=H,res=res,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize)
+    for Cj in C: LH = LH_plane(Cj,L=L,H=H,res=res,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
 
-def LH_plane(C,L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def LH_plane(C,L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates an RGB array that samples the LH plane for a given C """
     nL = int((L[1]-L[0])*res+1)
     nH = int((H[1]-H[0])*res+1)
@@ -55,10 +55,10 @@ def LH_plane(C,L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",mod
     extent = [H[0], H[1], L[0], L[1]]
     xticks = H_ticks if H==[0,360] else None
     yticks = L_ticks if L==[0,100] else None
-    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
+    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
     return arr
 
-def LH_plane_max(L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",kinds=['max','equ'],modes=['crop','clip'],axes=['on','off'],figsize=None):
+def LH_plane_max(L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",kinds=['max','equ'],modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates an RGB array that samples the LH plane at the max possible C
         Max means either the Cmax that accomodates all H for a given L ("equ") or the Cmax of this H for this L ("max")
     """
@@ -92,18 +92,18 @@ def LH_plane_max(L=[0,100],H=[0,360],res=1,showfig=True,dir=".",name="LHplane",k
     yticks = L_ticks if L==[0,100] else None
     for kind in kinds:
         ext = "Cmax%s"%kind
-        make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr[kind],extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
+        make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr[kind],extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
     return arr
 
 #-------
 # CH(L)
 #-------
 
-def CH_planes(L=np.arange(0,101,1),C=[0,200],H=[0,360],res=1,stretch=False,showfig=False,dir="CHplanes",name="CHplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def CH_planes(L=np.arange(0,101,1),C=[0,200],H=[0,360],res=1,stretch=False,showfig=False,dir="CHplanes",name="CHplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates the CH plane for a range of L """
-    for Li in L: CH = CH_plane(Li,C=C,H=H,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize)
+    for Li in L: CH = CH_plane(Li,C=C,H=H,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
 
-def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name="CHplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name="CHplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates an RGB array that samples the CH plane for a given L
         (if stretch=True, then C is expressed as a percentage of Cmax)
     """
@@ -149,18 +149,18 @@ def CH_plane(L,C=[0,200],H=[0,360],res=1,stretch=False,showfig=True,dir=".",name
         name += "_stretch"
         ylabel = "C/Cmax"
         yticks = [0, 50, 100] if C==[0,100] else None
-    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
+    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
     return arr
 
 #-------
 # LC(H)
 #-------
 
-def LC_planes(H=np.arange(0,360,1),L=[0,100],C=[0,200],res=1,stretch=False,showfig=False,dir="LCplanes",name="LCplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def LC_planes(H=np.arange(0,360,1),L=[0,100],C=[0,200],res=1,stretch=False,showfig=False,dir="LCplanes",name="LCplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates the LC plane for a range of H """
-    for Hk in H: LC = LC_plane(Hk,L=L,C=C,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize)
+    for Hk in H: LC = LC_plane(Hk,L=L,C=C,res=res,stretch=stretch,showfig=showfig,dir=dir,name=name,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
 
-def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name="LCplane",modes=['crop','clip'],axes=['on','off'],figsize=None):
+def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name="LCplane",modes=['crop','clip'],axes=['on','off'],figsize=None,dpi=None):
     """ Generates an RGB array that samples the LC plane for a given H
         (if stretch=True, then C is expressed as a percentage of Cmax)
     """
@@ -206,7 +206,7 @@ def LC_plane(H,L=[0,100],C=[0,200],res=1,stretch=False,showfig=True,dir=".",name
         name += "_stretch"
         xlabel = "C/Cmax"
         xticks = [0, 50, 100] if C==[0,100] else None
-    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize)
+    make_figure(showfig=showfig,dir=dir,name=name,ext=ext,arr=arr,extent=extent,xlabel=xlabel,ylabel=ylabel,xticks=xticks,yticks=yticks,modes=modes,axes=axes,figsize=figsize,dpi=dpi)
     return arr
 
 #-------
@@ -228,7 +228,7 @@ L_ticks = np.arange(int(100/25.)+1)*25
 H_ticks = np.arange(int(360/90.)+1)*90
 C_ticks = np.arange(int(200/50.)+1)*50
 
-def make_figure(showfig,dir,name,ext,arr,extent,xlabel,ylabel,xticks,yticks,modes=['crop','clip'],axes=['on','off'],aspect='equal',figsize=None):
+def make_figure(showfig, dir, name, ext, arr, extent, xlabel, ylabel, xticks, yticks, modes=['crop','clip'], axes=['on','off'], aspect='equal', figsize=None, dpi=None):
     """ Displays and/or saves a figure """
     if dir != "" and not os.path.exists(dir): os.makedirs(dir)
     for mode in modes:
@@ -244,8 +244,8 @@ def make_figure(showfig,dir,name,ext,arr,extent,xlabel,ylabel,xticks,yticks,mode
             if yticks is not None: plt.yticks(yticks)
             if dir != "" and 'on' in axes:
                 print("writing %s"%(fname+"_axon_"+ext+".png"))
-                plt.savefig(fname+"_axon_"+ext+".png", dpi=None, bbox_inches='tight')
+                plt.savefig(fname+"_axon_"+ext+".png",dpi=dpi,bbox_inches='tight')
                 if not showfig: plt.close(figname)
         if dir != "" and 'off' in axes:
             print("writing %s"%(fname+"_axoff_"+ext+".png"))
-            plt.imsave(arr=arr[mode],origin='lower',fname=fname+"_axoff_"+ext+".png")
+            plt.imsave(arr=arr[mode],origin='lower',fname=fname+"_axoff_"+ext+".png",dpi=dpi if dpi!=None else 200)

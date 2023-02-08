@@ -365,7 +365,7 @@ def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, heig
         if fname != "" and cmap!=None:
             fullname = "%s/%s%i_%s.png"%(dir,fname,width,name)
             print('writing ',fullname)
-            plt.imsave(arr=np.tile(gradient,(height,1)), origin='lower', fname=fullname, cmap=cmap)
+            plt.imsave(arr=np.tile(gradient,(height,1)), origin='lower', fname=fullname, cmap=cmap, dpi=dpi if dpi!=None else 200)
     if fname_all != "":
         fullname = "%s/%s%s.png"%(dir,fname_all,"_"+title if title!="" else "")
         print('writing ',fullname)
