@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __author__ = "Gilles Ferrand (RIKEN)"
-__version__ = "1.2"
+__version__ = "1.3"
 
 from . import convert
 from . import gamut

@@ -312,7 +312,9 @@ def get_cmap(name, nsteps=None):
         except:
             print("Unknown cmap: ",name)
             cmap = None
-    if cmap != None and nsteps != None and nsteps>0: cmap = cmap._resample(nsteps)
+    if cmap != None and nsteps != None and nsteps>0: 
+        if hasattr(cmap, '_resample'): cmap = cmap._resample(nsteps)
+        if hasattr(cmap, 'resampled'): cmap = cmap.resampled(nsteps)
     return cmap
 
 def plot_cmaps(names=[], filters=[], reverse=False, nsteps=None, width=256, height=32, fig=1, figsize=None, dpi=None, frame=False, labels="left", labelsize=10, title="", titlesize=14, dir=".", fname_all="cmaps", fname="cmap"):

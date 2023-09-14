@@ -32,10 +32,11 @@ def set_convertor(name, ill='D65'):
         func_LCH2RGB = lambda L,C,H: cspace_convert([L,C,H], {"name": "CIELCh", "XYZ100_w": ill}, "sRGB1")
         func_RGB2LCH = lambda R,G,B: cspace_convert([R,G,B], "sRGB1", {"name": "CIELCh", "XYZ100_w": ill})
     if name=='colourscience':
-        import colour as cs
-        cs_ill = cs.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][ill]
-        func_LCH2RGB = lambda L,C,H: cs.XYZ_to_sRGB(cs.Lab_to_XYZ(cs.LCHab_to_Lab([L,C,H]), illuminant=cs_ill))
-        func_RGB2LCH = lambda R,G,B: cs.Lab_to_LCHab(cs.XYZ_to_Lab(cs.sRGB_to_XYZ([R,G,B]), illuminant=cs_ill))
+        import colour
+        if hasattr(colour,'ILLUMINANTS'    ): cs_ill = colour.ILLUMINANTS    ['CIE 1931 2 Degree Standard Observer'][ill]
+        if hasattr(colour,'CCS_ILLUMINANTS'): cs_ill = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][ill]
+        func_LCH2RGB = lambda L,C,H: colour.XYZ_to_sRGB(colour.Lab_to_XYZ(colour.LCHab_to_Lab([L,C,H]), illuminant=cs_ill))
+        func_RGB2LCH = lambda R,G,B: colour.Lab_to_LCHab(colour.XYZ_to_Lab(colour.sRGB_to_XYZ([R,G,B]), illuminant=cs_ill))
     if name=='colorspacious' or name=='colourscience':
         def LCH2RGB(L,C,H):
             if hasattr(L, '__iter__'):

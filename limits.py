@@ -34,9 +34,15 @@ limits['ref'] = {}
 
 def get_limits_ref():
     """ Gets the limits tabulated inside colour-science, for reference """
-    limits['ref']['XYZ'] = colour.xyY_to_XYZ(colour.volume.ILLUMINANTS_OPTIMAL_COLOUR_STIMULI['D65'])
-    convert(limits['ref'])
-    for space in limits['ref'].keys(): triangulate(space,kind='ref')
+    if hasattr(colour.volume,'ILLUMINANTS_OPTIMAL_COLOUR_STIMULI'): 
+        limits['ref']['XYZ'] = colour.xyY_to_XYZ(colour.volume.ILLUMINANTS_OPTIMAL_COLOUR_STIMULI['D65'])
+    if hasattr(colour.volume,'ILLUMINANT_OPTIMAL_COLOUR_STIMULI'): 
+        limits['ref']['XYZ'] = colour.xyY_to_XYZ(colour.volume.ILLUMINANT_OPTIMAL_COLOUR_STIMULI['D65'])
+    if hasattr(colour.volume,'OPTIMAL_COLOUR_STIMULI_ILLUMINANTS'): 
+        limits['ref']['XYZ'] = colour.xyY_to_XYZ(colour.volume.OPTIMAL_COLOUR_STIMULI_ILLUMINANTS['D65'])
+    if 'XYZ' in limits['ref'].keys():
+        convert(limits['ref'])
+        for space in limits['ref'].keys(): triangulate(space,kind='ref')
 
 def find_limits(l_step=1, l_min=360, l_max=780, dir=this_dir):
     """ Computes the optimal colours
@@ -75,16 +81,25 @@ def printline(text, newline=False):
     sys.stdout.write("\n") if newline else sys.stdout.write("\r")
     sys.stdout.flush()
 
-def spectrum_to_XYZ(domain, values):
+def spectrum_to_XYZ(domain, values, illuminant='D65'):
     """ Converts a spectral distribution into a XYZ colour """
-    spd = colour.SpectralPowerDistribution(values, domain=domain, interpolator=colour.NullInterpolator)
-    cmfs = colour.STANDARD_OBSERVERS_CMFS['CIE 1931 2 Degree Standard Observer']
-    illuminant = colour.ILLUMINANTS_RELATIVE_SPDS['D65']
-    return colour.spectral_to_XYZ(spd, cmfs, illuminant)
+    data = dict(zip(domain,values))
+    if hasattr(colour,'SpectralPowerDistribution'):
+        spd = colour.SpectralPowerDistribution(data, interpolator=colour.NullInterpolator)
+        cmfs = colour.STANDARD_OBSERVERS_CMFS['CIE 1931 2 Degree Standard Observer']
+        illuminant = colour.ILLUMINANTS_RELATIVE_SPDS[illuminant]
+        XYZ = colour.spectral_to_XYZ(spd, cmfs, illuminant)
+    if hasattr(colour,'SpectralDistribution'):
+        sd = colour.SpectralDistribution(data, interpolator=colour.NullInterpolator)
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+        illuminant = colour.SDS_ILLUMINANTS[illuminant]
+        XYZ = colour.sd_to_XYZ(sd, cmfs, illuminant)
+    return XYZ
 
 def convert(dict, illuminant='D65'):
     """ Converts the set of XYZ colours into other spaces: Lab, LCH, sRGB """
-    illuminant = colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][illuminant]
+    if hasattr(colour,'ILLUMINANTS'    ): illuminant = colour.ILLUMINANTS    ['CIE 1931 2 Degree Standard Observer'][illuminant]
+    if hasattr(colour,'CCS_ILLUMINANTS'): illuminant = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][illuminant]
     dict['Lab'] = colour.XYZ_to_Lab(dict['XYZ']/100., illuminant) # beware: expects XYZ in [0,1]
     dict['LCH'] = colour.Lab_to_LCHab(dict['Lab'])
     dict['RGB'] = colour.XYZ_to_sRGB(dict['XYZ']/100., illuminant) # beware: expects XYZ in [0,1]
