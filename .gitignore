@@ -2,3 +2,6 @@
 .ipynb*
 slices/*
 maps/*
+test/*
+src/colourspace.egg*
+dist/*

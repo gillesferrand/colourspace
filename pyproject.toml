@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools]
+package-dir = {"" = "src"}
+[tool.setuptools.package-data]
+colourspace = ["gamut/*.npy","limits/*.npy","tutorials/*.ipynb"]
+
+[project]
+name = "colourspace-explorer"
+version = "1.5"
+description = "A package providing tools for working with colours in python"
+readme = "README.md"
+authors = [{ name = "Gilles Ferrand", email = "astro.ferrand@gmail.com" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.7"
+dependencies = ["numpy", "matplotlib", "scipy", "colorspacious", "colour-science"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["colour","colour space","colour maps",]
+
+[project.urls]
+"Homepage" = "https://github.com/gillesferrand/colourspace"
